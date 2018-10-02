@@ -8,6 +8,8 @@ cache:
   yarn: true
   directories:
     - node_modules
+notifications:
+  email: false
 before_install:
 - git config --global user.name "Roger-luo"
 - git config --global user.email "hiroger@qq.com"
@@ -25,5 +27,4 @@ after_success:
 - git init
 - git add --all .
 - git commit -m "Travis CI Auto Builder"
-# 这里的 REPO_TOKEN 即之前在 travis 项目的环境变量里添加的
 - git push --force https://$DOCUMENTER_KEY@github.com/Roger-luo/blog.git gh-pages
