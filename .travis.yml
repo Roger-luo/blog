@@ -26,9 +26,10 @@ script:
 - hexo clean
 - hexo generate
 after_success:
-- cd ./public
-- git init
-- git add --all .
-- git commit -m "Travis CI Auto Builder"
-- git remote add origin https://$DOCUMENTER_KEY@github.com/Roger-luo/blog.git
-- git push --force origin origin/gh-pages
+- hexo depoly
+# - cd ./public
+# - git init
+# - git add --all .
+# - git commit -m "Travis CI Auto Builder"
+# - git remote add origin https://$DOCUMENTER_KEY@github.com/Roger-luo/blog.git
+# - git push --force origin origin/gh-pages
