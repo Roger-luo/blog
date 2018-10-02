@@ -11,9 +11,6 @@ cache:
 notifications:
   email: false
 before_install:
-- openssl aes-256-cbc -K $DOCUMENTER_KEY $encrypted_xxxxxxxxxx_iv
-  -in id_rsa.enc -out ~/.ssh/id_rsa -d
-- chmod 600 ~/.ssh/id_rsa
 - git config --global user.name "Roger-luo"
 - git config --global user.email "hiroger@qq.com"
 # yarn
