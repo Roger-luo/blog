@@ -3,17 +3,17 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: Hexo
+title: Half Integer
 subtitle:
-description:
+description: Where I writes about Machine Learning, Quanutm Physics, and more.
 keywords:
-author: John Doe
+author: Roger Luo
 language:
 timezone:
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: http://yoursite.com
+url: http://rogerluo.me/blog
 root: /
 permalink: :year/:month/:day/:title/
 permalink_defaults:
@@ -78,4 +78,13 @@ theme: next
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
-  type:
+  type: git
+  repo: https://github.com/Roger-luo/blog
+  branch: gh-pages
+
+# Search
+search:
+  path: search.xml
+  field: post
+  format: html
+  limit: 10000
