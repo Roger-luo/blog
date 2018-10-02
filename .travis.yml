@@ -27,7 +27,7 @@ script:
 - hexo generate
 after_success:
 - sed -i "s/DOCUMENTER_KEY/${DOCUMENTER_KEY}/g" ./_config.yml
-- hexo depoly
+- hexo d
 # - cd ./public
 # - git init
 # - git add --all .
