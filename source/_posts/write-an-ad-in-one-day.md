@@ -513,7 +513,7 @@ Then, to implement unit test, I copied the `gradcheck` function from `PyTorch`, 
 Okay, it is done! With about only 200~300 lines Julia, what can we get? Actually, I thought it would be just a toy, but
 it is amazing, when I tried to use it for my own work:
 
-So I need to calculate something called [matrix product state](https://en.wikipedia.org/wiki/Matrix_product_state), well, I'm going to talk about quantum physics, so it is just some rank-3 tensors (3 dimensional array), and we will need to calculate something like the following expression:
+So I need to calculate something called [matrix product state](https://en.wikipedia.org/wiki/Matrix_product_state), well, I'm not going to talk about quantum physics, so in short, it is just some rank-3 tensors (3 dimensional array), and we will need to calculate something like the following expression:
 
 ```julia
 tr(x1 * x2 * x3)
