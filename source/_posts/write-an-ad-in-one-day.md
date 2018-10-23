@@ -663,6 +663,6 @@ So, as you see, writing an AD package can be super sweet in Julia with multiple 
 
 # Acknowledgement
 
-Thanks for Keno for benchmarking advice on Zygote, I was actually quite confusing about the performance and submitted an issue here: https://github.com/FluxML/Zygote.jl/issues/28
+Thanks for Keno for benchmarking advice on Zygote, I was actually quite confusing about the performance and submitted an issue here: [Zygote.jl/issues/28](https://github.com/FluxML/Zygote.jl/issues/28)
 
 And thanks for the [Luxor.jl](https://github.com/JuliaGraphics/Luxor.jl), I use this package for ploting the animation in the blog post. You might want to check my ugly plotting script here: [plot.jl](https://github.com/Roger-luo/YAAD.jl/blob/master/docs/plot.jl)
