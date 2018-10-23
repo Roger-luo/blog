@@ -557,6 +557,12 @@ end
 function bench_tr_mul_zygote(x1, x2)
     Zygote.gradient((x1, x2)->tr(x1 * x2), x1, x2)
 end
+
+function bench_tr_mul_flux(x1, x2)
+    z = tr(x1 * x2)
+    back!(z, 1)
+    Tracker.grad(x1), Tracker.grad(x2)
+end
 ```
 
 and in PyTorch (our interface is quite similar to PyTorch, isn't it?)
@@ -576,6 +582,7 @@ The value is defined as follows
 xv, yv = rand(30, 30), rand(30, 30)
 yaad_x, yaad_y = YAAD.Variable(xv), YAAD.Variable(yv)
 autograd_x, autograd_y = AutoGrad.Param(xv), AutoGrad.Param(yv)
+flux_x, flux_y = Flux.param(xv), Flux.param(yv)
 ```
 
 Before we benchmark other packages, I also write a baseline function, which calculate the gradient manually:
@@ -644,6 +651,19 @@ BenchmarkTools.Trial:
   --------------
   samples:          10000
   evals/sample:     5
+
+julia> @benchmark bench_tr_mul_flux(flux_x, flux_y)
+BenchmarkTools.Trial:
+  memory estimate:  30.25 KiB
+  allocs estimate:  24
+  --------------
+  minimum time:     8.009 μs (0.00% GC)
+  median time:      10.002 μs (0.00% GC)
+  mean time:        14.412 μs (30.14% GC)
+  maximum time:     16.286 ms (99.87% GC)
+  --------------
+  samples:          10000
+  evals/sample:     3
 ```
 
 and for PyTorch (version v0.4.1)
@@ -657,7 +677,7 @@ In [6]: %timeit bench_tr_mul_torch(x, y)
 76.8 µs ± 1.68 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
 ```
 
-Our implementation is not bad, huh? Only about 4~5 μs slower than the baseline due to the dynamic construction of our computational graph in runtime and for this expression it is the fastest! It is about 5x faster than other packages in either Julia or Python/C++.
+Our implementation is not bad, huh? Only about 4~5 μs slower than the baseline due to the dynamic construction of our computational graph in runtime and Flux is the fastest (it is implemented in similar approach), amazing! It is about 5x faster than other packages in either Julia or Python/C++.
 
 So, as you see, writing an AD package can be super sweet in Julia with multiple dispatch. You can actually write your own AD with a reasonable performance in Julia like a pro!
 
