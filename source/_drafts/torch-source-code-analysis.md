@@ -59,8 +59,7 @@ You cannot find this anymore since we have a generic type `at::StorageImpl` now.
 
 In later `PyTorch` version, they implemented `c10` that provides another reference count utility called `c10::intrusive_ptr`, this will do what have here for `THStorage` for any other type that inherit from `c10::intrusive_ptr_target`, which has better performance than `std::shared_ptr` since it does reference counting intrusively.
 
-Then, let's check what is a `Tensor` exactly, in fact, despite of AD (automatic differenciation), it is just a (numpy/MATLAB-styled) multi-dimensional array. Although,
-the concept of `Tensor` was accepted widely with tensorflow in recent years, physicists have been using it (multi-dimensional array) for condensed matter physics, etc. many years ago, libraries like [iTensor](http://itensor.org), TensorToolkit (MATLAB) was built for those purpose. e.g a quantum state of $n$-body is a rank-$n$ tensor.
+Then, let's check what is a `Tensor` exactly, in fact, despite of AD (automatic differenciation), it is just a (numpy/MATLAB-styled) multi-dimensional array. Although, the concept of `Tensor` was accepted widely with tensorflow in recent years, physicists have been using it (multi-dimensional array) for condensed matter physics, etc. many years ago, libraries like [iTensor](http://itensor.org), TensorToolkit (MATLAB) was built for those purpose. e.g a quantum state of $n$-body is a rank-$n$ tensor.
 
 Or you probably have used it before in `C` as:
 
@@ -74,8 +73,7 @@ Or FORTRAN:
 REAL, DIMENSION(0:R1, 0:R2, 0:R3) :: A
 ```
 
-this will allocate a memory of size $R1 \times R2 \times R3$, but the way to view this memory is to use multiple indices, e.g `A[1][2][3]`, in `C` this is actually indexing a pointer multiple times.
-But most people probably prefers MATLAB-style: `A[1, 2, 3]`, which is not possible in `C++`, since `C++`'s `operator []` is a single argument operator (because it is compatible with `C`!).
+this will allocate a memory of size $R1 \times R2 \times R3$, but the way to view this memory is to use multiple indices, e.g `A[1][2][3]`, in `C` this is actually indexing a pointer multiple times. But most people probably prefers MATLAB-style: `A[1, 2, 3]`, which is not possible in `C++`, since `C++`'s `operator []` is a single argument operator, which generally means the offset of a pointer. (because it is compatible with `C`!).
 
 But generally, `Tensor` will just store the shape information and the location & size of the `Storage`, it is a way to view the storage.
 
@@ -97,6 +95,6 @@ typedef struct THTensor
 } THTensor;
 ```
 
-This is called **strided array**, un-like C-styled multi-dimensional array, we allocate the array on a contiguous memory and use **stride** to distinguish elements of different dimension. This is inherited from `numpy`.
+This is called **strided array**, un-like C-styled multi-dimensional array, we allocate the array on a contiguous memory and use **stride** to distinguish elements of different dimension. This is inherited from `numpy`. Apparently, it is quite fast when you trying to **broadcast** something to every elements of the tensor, since the memory address of each elements are contiguous.
 
-Apparently, it is quite fast when you trying to **broadcast** something to every elements of the tensor, since the memory address of each elements are contiguous.
+In the new backend, this is called `TensorImpl`, it is also a sub-class of `c10::intrusive_ptr_target`, which means this is reference counted.
