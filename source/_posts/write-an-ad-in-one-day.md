@@ -8,7 +8,7 @@ I was playing with [AutoGrad.jl](https://github.com/denizyuret/AutoGrad.jl) and 
 awesome, and AutoGrad.jl is already applied to the machine learning framework in Julia: [Knet.jl](https://github.com/denizyuret/Knet.jl). However,
 when I tried to read the source code of AutoGrad.jl, it is not large indeed. And as a PyTorch contributor and user, I personally prefer some of PyTorch's interfaces, therefore, I tried to implemented my own automatic differentiation and it just took me one day to finished the core part (including broadcast!), although, I spent a few hours more in the next following days to polish the interface (a weekend to write a blog post). But it is actually quite easy to implement an automatic differentiation package in Julia.
 
-I packed it to a package (YAAD.jl: Yet Another AD package for Julai) here: [Roger-luo/YAAD.jl](https://github.com/Roger-luo/YAAD.jl)
+I packed it to a package (YAAD.jl: Yet Another AD package for Julia) here: [Roger-luo/YAAD.jl](https://github.com/Roger-luo/YAAD.jl)
 
 In this post, I'll introduce how did I implemented my own automatic differentiation, and maybe, you can build one of your own as well!
 
@@ -657,6 +657,6 @@ In [6]: %timeit bench_tr_mul_torch(x, y)
 76.8 µs ± 1.68 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
 ```
 
-Our implementation is not bad, huh? Only about 4~5 μs slower than the baseline due to the dynamic construction of our computational graph in runtime.
+Our implementation is not bad, huh? Only about 4~5 μs slower than the baseline due to the dynamic construction of our computational graph in runtime and for this expression it is the fastest! It is about 5x faster than other packages in either Julia or Python/C++.
 
 So, as you see, writing an AD package can be super sweet in Julia with multiple dispatch. You can actually write your own AD with a reasonable performance in Julia like a pro!
