@@ -34,8 +34,8 @@ We will need to call several functions in Julia to get the result $y$, which is
 
 1. $\mathbf{z_1} = \mathbf{x}^T$: `transpose` function.
 2. $\mathbf{z_2} = \mathbf{z_1} A$ matrix-vector multiplication, which can be `gemv` in `LinearAlgebra.BLAS`, or just `*`.
-3. $y1 = \mathbf{z2} \mathbf{x}$ vector dot operation, which is `LinearAlgebra.dot` or the UTF-8 operator `x ⋅ y`
-4. $y2 = \mathbf{b} \cdot \mathbf{x}$ another vector dot
+3. $y_1 = \mathbf{z_2} \mathbf{x}$ vector dot operation, which is `LinearAlgebra.dot` or the UTF-8 operator `x ⋅ y`
+4. $y_2 = \mathbf{b} \cdot \mathbf{x}$ another vector dot
 5. $y_1 + y_2 + c$ a scalar add function, one can calculate it by simply calling `+` operator in Julia.
 
 In fact, we can draw a graph of this expression, which illustrates the relationship between each variable in this expression.
