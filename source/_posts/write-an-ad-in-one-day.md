@@ -1,6 +1,7 @@
 ---
 title: Implement Your Own Automatic Differentiation with Julia in ONE day
 tags: automatic differentiation
+date: 2018-10-23
 mathjax: true
 ---
 
