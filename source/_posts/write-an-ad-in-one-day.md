@@ -6,10 +6,9 @@ mathjax: true
 ---
 
 I was playing with [AutoGrad.jl](https://github.com/denizyuret/AutoGrad.jl) and [Zygote.jl](https://github.com/FluxML/Zygote.jl), they both look
-awesome, and AutoGrad.jl has already been applied to the machine learning framework in Julia: [Knet.jl](https://github.com/denizyuret/Knet.jl). However,
-when I tried to read the source code of AutoGrad.jl and in fact it is not large.
+awesome, and AutoGrad.jl has already been applied to the machine learning framework in Julia: [Knet.jl](https://github.com/denizyuret/Knet.jl). When I tried to read the source code of AutoGrad.jl, it is actually quite simple and small.
 
-As a PyTorch contributor and user, I personally prefer some of PyTorch's interfaces (both frontend and backend), and as a Julian, I want to see how simple it can be to write a Julia AD package. Therefore, I tried to implemented my own automatic differentiation and it just took me one day to finished the core part (including broadcast!).
+But, as a PyTorch contributor and user, I personally prefer some of PyTorch's interfaces (both frontend and backend), and as a Julian, I want to see how simple it can be to write a Julia AD package. Therefore, I tried to implemented my own automatic differentiation and it just took me one day to finished the core part (including broadcast!).
 
 Although, I spent a few hours more during the next following days to polish the interface (a weekend to write a blog post). But it is actually quite easy to implement an automatic differentiation package in Julia.
 
