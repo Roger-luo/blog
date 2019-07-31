@@ -9,6 +9,8 @@ I wrote a blog post about how to implement your own (operator overloading based)
 to source automatic differentiation. I wrote this during JuliaCon 2019 hackthon with help from [Mike Innes](https://github.com/MikeInnes).
 It turns out that writing a blog post takes longer than writing a source to source AD ;-). This is basically just simple version of Zygote.
 
+I wrap this thing as a very simple package here, if you want to look at more detailed implementation: [YASSAD.jl](https://github.com/Roger-luo/YASSAD.jl).
+
 If you have used operator overloading based AD like [PyTorch](https://github.com/pytorch/pytorch), [Flux/Tracker](https://github.com/FluxML/Tracker.jl), [AutoGrad](https://github.com/HIPS/autograd), you may find they have some limitations:
 
 - A `Tensor` type or `Variable` type provided by the package has to be used for tracing the function calls
