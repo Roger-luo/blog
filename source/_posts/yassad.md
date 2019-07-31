@@ -659,6 +659,18 @@ function adjoint(ir, pbs)
 end
 ```
 
+## Contextual Dispatch
+
+Reviewing what we just implemented above, we can find we were actually just dispatching functions based on their context instead of
+their signature (since the signature is used to dispatch the function themselves). The Julia community actually implements something
+more general: the [Cassette.jl](https://github.com/jrevels/Cassette.jl). Cassette can dispatch function based on a context, and it also contains an implementation of AD as well: [Cassette/test](https://github.com/jrevels/Cassette.jl/blob/a67c8e98ea975203e46b913807a86de5d3e84130/test/misctaggingtests.jl#L402). With these mechanism, and the dynamic feature of Julia, we are not only able to implement source to source AD, we can also have
+
+- [Sparsity Detection](https://github.com/JuliaDiffEq/SparsityDetection.jl)
+- [SPMD transformation](https://github.com/FluxML/Hydra.jl)
+- Intermediate Variable Optimization
+- Debugger: [MagneticReadHead](https://github.com/oxinabox/MagneticReadHead.jl)
+- [Unified Interface of CUDAnative](https://github.com/JuliaGPU/CUDAnative.jl/pull/334)
+
 ## Conclusion
 
 Let's try this with matrix multiplication + matrix trace, which is the same with what we do in our last post!
