@@ -18,9 +18,6 @@ before_install:
 - export PATH=$HOME/.yarn/bin:$PATH
 - npm install -g hexo-cli
 - npm un hexo-renderer-marked --save
-- npm i hexo-renderer-markdown-it --save
-- npm install hexo-generator-searchdb --save
-- npm install hexo-deployer-git --save
 install:
 - yarn
 script:
