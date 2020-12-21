@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"rogerluo.me","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="I was playing with AutoGrad.jl and Zygote.jl, they both lookawesome, and AutoGrad.jl has already been applied to the machine learning framework in Julia: Knet.jl. When I tried to read the source code">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Implement Your Own Automatic Differentiation with Julia in ONE day">
+<meta property="og:url" content="http://rogerluo.me/blog/2018/10/23/write-an-ad-in-one-day/index.html">
+<meta property="og:site_name" content="Half Integer">
+<meta property="og:description" content="I was playing with AutoGrad.jl and Zygote.jl, they both lookawesome, and AutoGrad.jl has already been applied to the machine learning framework in Julia: Knet.jl. When I tried to read the source code">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://rogerluo.me/images/comput-graph-forward.gif">
+<meta property="og:image" content="http://rogerluo.me/images/comput-graph-backward.gif">
+<meta property="article:published_time" content="2018-10-23T04:00:00.000Z">
+<meta property="article:modified_time" content="2020-12-21T08:06:56.126Z">
+<meta property="article:author" content="Xiu-Zhe (Roger) Luo">
+<meta property="article:tag" content="automatic differentiation">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://rogerluo.me/images/comput-graph-forward.gif">
+
+<link rel="canonical" href="http://rogerluo.me/blog/2018/10/23/write-an-ad-in-one-day/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Implement Your Own Automatic Differentiation with Julia in ONE day | Half Integer</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Half Integer</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Xiu-Zhe (Roger) Luo's Blog</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://rogerluo.me/blog/2018/10/23/write-an-ad-in-one-day/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Xiu-Zhe (Roger) Luo">
+      <meta itemprop="description" content="Where I writes about Machine Learning, Quanutm Physics, and more.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Half Integer">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Implement Your Own Automatic Differentiation with Julia in ONE day
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-10-23 00:00:00" itemprop="dateCreated datePublished" datetime="2018-10-23T00:00:00-04:00">2018-10-23</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-12-21 03:06:56" itemprop="dateModified" datetime="2020-12-21T03:06:56-05:00">2020-12-21</time>
+              </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Disqus: </span>
+    
+    <a title="disqus" href="/2018/10/23/write-an-ad-in-one-day/#disqus_thread" itemprop="discussionUrl">
+      <span class="post-comments-count disqus-comment-count" data-disqus-identifier="2018/10/23/write-an-ad-in-one-day/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>I was playing with <a target="_blank" rel="noopener" href="https://github.com/denizyuret/AutoGrad.jl">AutoGrad.jl</a> and <a target="_blank" rel="noopener" href="https://github.com/FluxML/Zygote.jl">Zygote.jl</a>, they both look<br>awesome, and AutoGrad.jl has already been applied to the machine learning framework in Julia: <a target="_blank" rel="noopener" href="https://github.com/denizyuret/Knet.jl">Knet.jl</a>. When I tried to read the source code of AutoGrad.jl, it is actually quite simple and small.</p>
+<p>But, as a PyTorch contributor and user, I personally prefer some of PyTorch’s interfaces (both frontend and backend), and as a Julian, I want to see how simple it can be to write a Julia AD package. Therefore, I tried to implemented my own automatic differentiation and it just took me one day to finished the core part (including broadcast!).</p>
+<p>Although, I spent a few hours more during the next following days to polish the interface (a weekend to write a blog post). But it is actually quite easy to implement an automatic differentiation package in Julia.</p>
+<p>I packed it to a package (YAAD.jl: Yet Another AD package for Julia) here: <a target="_blank" rel="noopener" href="https://github.com/Roger-luo/YAAD.jl">Roger-luo/YAAD.jl</a></p>
+<p>In this post, I’ll introduce how did I implemented my own automatic differentiation, and maybe, you can build one of your own as well!</p>
+<h2 id="Automatic-Differentiation-A-Brief-Intro"><a href="#Automatic-Differentiation-A-Brief-Intro" class="headerlink" title="Automatic Differentiation: A Brief Intro"></a>Automatic Differentiation: A Brief Intro</h2><p>There are generally two kinds of automatic differentiation: forward mode differentiation and reverse mode differentiation. What we need in deep learning (as well as tensor networks in physics) is the reverse mode differentiation, because the model we are going to optimize usually contains quite a lot parameters. This is also called as back-propagation and requires something called comput-graph.</p>
+<h3 id="Comput-Graph"><a href="#Comput-Graph" class="headerlink" title="Comput-Graph"></a>Comput-Graph</h3><p><em>To illustrate this, I stole some nice picture and re-ploted them in animation from cs5740, 2017sp, Cornell.</em></p>
+<p>Say we are calculating the following expression:</p>
+<p>$$<br>y = \mathbf{x}^T \mathbf{A} \mathbf{x} + \mathbf{b}\cdot \mathbf{x} + c<br>$$</p>
+<p>We will need to call several functions in Julia to get the result $y$, which is</p>
+<ol>
+<li>$\mathbf{z_1} = \mathbf{x}^T$: <code>transpose</code> function.</li>
+<li>$\mathbf{z_2} = \mathbf{z_1} A$ matrix-vector multiplication, which can be <code>gemv</code> in <code>LinearAlgebra.BLAS</code>, or just <code>*</code>.</li>
+<li>$y_1 = \mathbf{z_2} \mathbf{x}$ vector dot operation, which is <code>LinearAlgebra.dot</code> or the UTF-8 operator <code>x ⋅ y</code></li>
+<li>$y_2 = \mathbf{b} \cdot \mathbf{x}$ another vector dot</li>
+<li>$y_1 + y_2 + c$ a scalar add function, one can calculate it by simply calling <code>+</code> operator in Julia.</li>
+</ol>
+<p>In fact, we can draw a graph of this expression, which illustrates the relationship between each variable in this expression.<br>Each node in the graph with an output arrow represents a variable and each node with an input arrow represents a function/operator.</p>
+<p><img src="/images/comput-graph-forward.gif" alt="comput-graph"></p>
+<p>The evaluation of the math equation above can then be expressed as a process called <strong>forward evaluation</strong>, it starts from the leaf nodes, which represents the inputs of the whole expression, e.g they are $\mathbf{x}, \mathbf{A}, \mathbf{b}, c$ in our expression. Each time, we receive the value of a node in the graph, we mark the node with <strong>green</strong>.</p>
+<p>Now, let’s calculate the gradients with <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Chain_rule"><strong>chain rule</strong></a>, the number of gradients returned by each function is the same as their inputs. We mark the node red if we receive a gradient, the gradient will be back propagated through the graph, which is called <strong>back propagation</strong> or <strong>backward evaluation</strong>.</p>
+<p><img src="/images/comput-graph-backward.gif" alt="comput-graph"></p>
+<h3 id="Dynamic-Comput-Graphs-VS-Static-Comput-Graphs"><a href="#Dynamic-Comput-Graphs-VS-Static-Comput-Graphs" class="headerlink" title="Dynamic Comput Graphs VS Static Comput Graphs"></a>Dynamic Comput Graphs VS Static Comput Graphs</h3><p>Although, the way of forward evaluation and backward evaluation are actually the same, but for implementation, we can construct the graph on the fly (like in <a target="_blank" rel="noopener" href="https://github.com/pytorch/pytorch">PyTorch</a>) or as a static declaration (like in  <a target="_blank" rel="noopener" href="https://github.com/tensorflow/tensorflow">TensorFlow</a>).</p>
+<p>Generally, the difference between them is that:</p>
+<p><strong>Whether the graph is defined before the forward evaluation happens or along with the forward evaluation.</strong></p>
+<p>I’m a PyTorch syntax lover, so I’m going to implement my AD as a dynamic constructed graph. But I’m also planning to write a macro in Julia that “freeze” a dynamic graph to static graph, because in principle, static graph is easier to optimize, since we will be able to access the whole graph before evaluation happens, which allows us to dispatch methods statically, but static graphs can be hard to debug.</p>
+<h2 id="Define-the-Nodes-in-the-Computational-Graph"><a href="#Define-the-Nodes-in-the-Computational-Graph" class="headerlink" title="Define the Nodes in the Computational Graph"></a>Define the Nodes in the Computational Graph</h2><p>Well, before we start writing something concrete, we can first define an <code>abstract type</code> for all nodes we are going to define:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract type</span> AbstractNode <span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<h3 id="Leaf-Nodes"><a href="#Leaf-Nodes" class="headerlink" title="Leaf Nodes"></a>Leaf Nodes</h3><p>Same, define an <code>abstract type</code> first.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract type</span> LeafNode &lt;: AbstractNode <span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>In PyTorch, a <code>Variable</code> is a multi-dimensional array (tensor) with a gradient (also store in a multi-dimensional array of the same size and data type). And it will accumulate the gradient if we back-propagate the graph for multiple times.</p>
+<p>Accumulating is sometimes useful, when you want to calculate the expectation of the gradient, or manipulate a batch of data, but not always useful. But anyway, we have an abstract type, we can define different flavored leaf nodes later.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">mutable struct</span> Variable&#123;T&#125; &lt;: LeafNode</span><br><span class="line">    value::T</span><br><span class="line">    grad::T</span><br><span class="line"></span><br><span class="line">    Variable(val::T) <span class="keyword">where</span> T = new&#123;T&#125;(val)</span><br><span class="line">    Variable(val::T, grad::T) <span class="keyword">where</span> T = new&#123;T&#125;(val)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>Here, we use <a target="_blank" rel="noopener" href="https://docs.julialang.org/en/v1/manual/constructors/#Incomplete-Initialization-1">incomplete initialization</a>, since we don’t really need to allocate a memory for the gradient at the beginning, we can just take the ownership of a temporary variable’s memory later.</p>
+<h3 id="Other-Nodes"><a href="#Other-Nodes" class="headerlink" title="Other Nodes"></a>Other Nodes</h3><p>Well, now we have some leaf nodes, but we need to store operations and their output for later use, so firstly, I define something called <code>Node</code></p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> Node&#123;FT &lt;: <span class="built_in">Function</span>, ArgsT &lt;: <span class="built_in">Tuple</span>, KwargsT &lt;: <span class="built_in">NamedTuple</span>&#125; &lt;: AbstractNode</span><br><span class="line">    f::FT</span><br><span class="line">    args::ArgsT</span><br><span class="line">    kwargs::KwargsT</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>It is a subtype of <code>AbstractNode</code>, and it stores a function call’s arguments and keywords. However, we will need to consider<br><code>broadcast</code> and normal function calls, they are actually different, therefore we should not directly store the function, thus, so let’s write some <code>traits</code>:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract type</span> Operator <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">module</span> Trait</span><br><span class="line"><span class="keyword">import</span> YAAD: Operator</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="built_in">Method</span>&#123;FT&#125; &lt;: Operator</span><br><span class="line">    f::FT</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> Broadcasted&#123;FT&#125; &lt;: Operator</span><br><span class="line">    f::FT</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span> <span class="comment"># Trait</span></span><br></pre></td></tr></table></figure>
+<p>Now we change <code>Function</code> to <code>Operator</code></p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> Node&#123;FT &lt;: Operator, ArgsT &lt;: <span class="built_in">Tuple</span>, KwargsT &lt;: <span class="built_in">NamedTuple</span>&#125; &lt;: AbstractNode</span><br><span class="line">    f::FT</span><br><span class="line">    args::ArgsT</span><br><span class="line">    kwargs::KwargsT</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>And we may make some constructors for convenience, since most <code>f</code>s will be method calls rather than broadcasts or self-defined<br>operators, and we usually don’t need the keyword arguments either:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># wrap function to Method</span></span><br><span class="line">Node(f::<span class="built_in">Function</span>, args, kwargs) = Node(Trait.<span class="built_in">Method</span>(f), args, kwargs)</span><br><span class="line">Node(op, args) = Node(op, args, <span class="built_in">NamedTuple</span>())</span><br></pre></td></tr></table></figure>
+<p>In fact, <code>Node</code> is actually just a trait for some object (some subtype of <code>Operator</code>), we haven’t<br>defined the type that store the output of each node in the graph, so here let’s define a <code>CachedNode</code><br>which will cache the forward evaluation result of <code>Node</code>:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">mutable struct</span> CachedNode&#123;NT &lt;: AbstractNode, OutT&#125; &lt;: AbstractNode</span><br><span class="line">    node::NT</span><br><span class="line">    output::OutT</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>So, to store the forward evaluation result of a <code>Node</code> with <code>CachedNode</code> when it is constructed, we need to forward propagate<br>the comput-graph recorded in <code>Node</code> and assign it to the cache:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> CachedNode(f, args...; kwargs...)</span><br><span class="line">    node = Node(f, args, kwargs.data) <span class="comment"># this constructs a Node</span></span><br><span class="line">    output = forward(node)</span><br><span class="line">    CachedNode(node, output)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<h2 id="Evaluations"><a href="#Evaluations" class="headerlink" title="Evaluations"></a>Evaluations</h2><p>The evaluation is the most important part, because we want to define our rules of evaluation in an extensible way, and<br>try to make it efficient. Luckily, in Julia, we have <strong>multiple dispatch</strong>! Let’s make use of it!</p>
+<h3 id="Forward-Evaluation"><a href="#Forward-Evaluation" class="headerlink" title="Forward Evaluation"></a>Forward Evaluation</h3><p>But how do we <strong>forward evaluate</strong> a <code>Node</code>? This depends on what kind of method is implemented for this generic function <code>forward</code>:</p>
+<ol>
+<li>If input is a <code>Node</code>, we re-dispatch this method to its operator’s forward method (while it forward evaluates the <code>args</code> and <code>kwargs</code>):</li>
+</ol>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">forward(node::Node) = forward(node.f, map(forward, node.args)...; map(forward, node.kwargs)...)</span><br></pre></td></tr></table></figure>
+<p>This will allow us to tweak the forward evaluation by simply implementing a method for the generic function <code>forward</code>, e.g, if we don’t want to directly calculate the result of a linear operator $\mathbf{W}\mathbf{x} + \mathbf{b}$ rather than store two nodes separately (a matrix-vector multiplication <code>*</code> and an add function <code>+</code>).</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> Linear &lt;: Operator</span><br><span class="line">  w::<span class="built_in">Matrix</span>&#123;<span class="built_in">Float64</span>&#125;</span><br><span class="line">  b::<span class="built_in">Vector</span>&#123;<span class="built_in">Float64</span>&#125;</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">forward(op::Linear, x::<span class="built_in">Vector</span>&#123;<span class="built_in">Float64</span>&#125;) = op.w * x + b</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>If input is a <code>CachedNode</code>, this means our user is evaluating this node for the second time (since we calculate the result when construct it), we will update its output</li>
+</ol>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">forward(node::CachedNode) = (node.output = forward(node.node))</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>However, for simple function calls, we don’t want to write something like</li>
+</ol>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> forward(::<span class="built_in">Method</span>&#123;typeof(sin)&#125;, x)</span><br><span class="line">  sin(x)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>each time, let’s make it simpler, by re-dispatching an operator’s <code>forward</code> method to a function call:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">forward(op::Operator, args...; kwargs...) = op.f(args...; kwargs...)</span><br></pre></td></tr></table></figure>
+<p>This means, as long as, the operator defines its own call method, it does not need to implement a method for <code>forward</code>, e.g</p>
+<p>We can just define the call method for <code>Linear</code> rather than defining a method for <code>forward</code>:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">(op::Linear)(x::<span class="built_in">Vector</span>) = op.w * x + b</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>There could be some constants in the <code>Node</code>, e.g when we call <code>Variable(2.0) + 1.0</code>, this <code>1.0</code> is actually a constant, therefore, we can just return it, when the input is not part of the computational graph (not a subtype of <code>AbstractNode</code>) and define a default method for <code>AbstractNode</code> for better error messages.</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">forward(x) &#x3D; x</span><br><span class="line">forward(x::NT) where &#123;NT &lt;: AbstractNode&#125; &#x3D; error(&quot;forward method is not implemented for node type: $NT&quot;)</span><br></pre></td></tr></table></figure>
+<ol start="5">
+<li>For leaf nodes, they should directly return their value, but we might use another kind of leaf node to make the non-PyTorch lover<br>happy in the future, so let’s define a generic function <code>value</code> to get this property:</li>
+</ol>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">value(x) = x</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> value(x::T) <span class="keyword">where</span> &#123;T &lt;: AbstractNode&#125;</span><br><span class="line">    error(</span><br><span class="line">        <span class="string">&quot;Expected value in this node <span class="variable">$x</span> of type <span class="variable">$T</span> &quot;</span>,</span><br><span class="line">        <span class="string">&quot;check if you defined a non-cached node&quot;</span>,</span><br><span class="line">        <span class="string">&quot; or overload value function for your node.&quot;</span></span><br><span class="line">    )</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">value(x::Variable) = x.value</span><br><span class="line">value(x::CachedNode) = value(x.output)</span><br></pre></td></tr></table></figure>
+<p>And leaf nodes’ <code>forward</code> directly return its value:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">forward(node::LeafNode) = value(node)</span><br></pre></td></tr></table></figure>
+<p>Okay! We have defined all we need for <code>forward</code> evaluation, now let’s try to implement backward evaluation.</p>
+<h3 id="Backward-Evaluation"><a href="#Backward-Evaluation" class="headerlink" title="Backward Evaluation"></a>Backward Evaluation</h3><p>The backward evaluation is actually similar to forward evaluation, we will call backward recursively on each node and its <code>args</code> (no, I’m not going to support <code>backward</code> on <code>kwargs</code> here, XD).</p>
+<p>Firstly, for <code>LeafNode</code>, this is simple, e.g <code>Variable</code> will just take the <code>grad</code></p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> backward(x::Variable, grad)</span><br><span class="line">    <span class="keyword">if</span> isdefined(x, :grad)</span><br><span class="line">        x.grad += grad</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        x.grad = grad</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="literal">nothing</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>We will check if this <code>grad</code> member is defined (it is incomplete initialized!), if it is not, we will just use the memory of<br>this gradient, or we can add it to the current gradient, just like PyTorch’s <code>Variable</code> (or <code>Tensor</code> after v0.4).</p>
+<p>And now, we need to define how to backward evaluate a <code>CachedNode</code>:</p>
+<ol>
+<li>We gather the gradients of inputs from a function called <code>gradient</code></li>
+<li>We put each corresponding gradient to sub-node of current node and call their <code>backward</code></li>
+</ol>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> backward(node::CachedNode, f, grad)</span><br><span class="line">    grad_inputs = gradient(node, grad)</span><br><span class="line">    <span class="keyword">for</span> (each, each_grad) <span class="keyword">in</span> zip(args(node), grad_inputs)</span><br><span class="line">        backward(each, each_grad)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="literal">nothing</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>Oh, you might want to add some assertion to output a better error message here, we will check the type of gradient and output and also their size here, in most cases, gradient should have the exact same<br>type and size as output:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">backward_type_assert(node::CachedNode&#123;&lt;:AbstractNode, T&#125;, grad::T) <span class="keyword">where</span> T = <span class="literal">true</span></span><br><span class="line">backward_type_assert(node::CachedNode&#123;&lt;:AbstractNode, T1&#125;, grad::T2) <span class="keyword">where</span> &#123;T1, T2&#125; =</span><br><span class="line">    error(<span class="string">&quot;Gradient is expected to have the same&quot;</span>,</span><br><span class="line">          <span class="string">&quot; type with outputs, expected <span class="variable">$T1</span>&quot;</span>,</span><br><span class="line">          <span class="string">&quot; got <span class="variable">$T2</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+<p>but for subtype of <code>AbstractArray</code>, we can just allow them to have the same static parameter (tensor rank and data type), because we will probably be dealing with <code>SubArray</code> and <code>Array</code> for some operators, which does not really matters</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># exclude arrays</span></span><br><span class="line">backward_type_assert(node::CachedNode&#123;&lt;:AbstractNode, T1&#125;, grad::T2) <span class="keyword">where</span></span><br><span class="line">    &#123;T, N, T1 &lt;: <span class="built_in">AbstractArray</span>&#123;T, N&#125;, T2 &lt;: <span class="built_in">AbstractArray</span>&#123;T, N&#125;&#125; = <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<p>Finally we check the size of the gradients and outputs</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> backward_size_assert(node::CachedNode, grad)</span><br><span class="line">    size(node.output) == size(grad) ||</span><br><span class="line">        error(</span><br><span class="line">            <span class="string">&quot;gradient should have the same size with output,&quot;</span>,</span><br><span class="line">            <span class="string">&quot; expect size <span class="subst">$(size(node.output)</span>), got <span class="subst">$(size(grad)</span>)&quot;</span></span><br><span class="line">        )</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>In Julia, there is a compiler option to turn bounds check off. We sometimes don’t actually need to check bounds at runtime<br>so we put this assertion in <code>@boundscheck</code>. It looks like:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> backward(node::CachedNode, f, grad)</span><br><span class="line">    backward_type_assert(node, grad)</span><br><span class="line">    <span class="comment"># TODO: replace with @assert when there is a compiler option for it</span></span><br><span class="line">    <span class="meta">@boundscheck</span> backward_size_assert(node, grad)</span><br><span class="line"></span><br><span class="line">    grad_inputs = gradient(node, grad)</span><br><span class="line">    <span class="keyword">for</span> (each, each_grad) <span class="keyword">in</span> zip(args(node), grad_inputs)</span><br><span class="line">        backward(each, each_grad)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="literal">nothing</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>OK, now, let’s think about how to return the gradient, I would prefer our AD be highly extensible by taking advantage of  Julia’s <strong>multiple dispatch</strong>, and I will only need to define the gradient by defining different methods for <code>gradient</code>, e.g</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gradient(::typeof(sin), grad, output, x) = grad * cos(x)</span><br></pre></td></tr></table></figure>
+<p>This can be implemented in the same way as <code>forward</code>: re-dispatch the method to different syntax:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gradient(x::CachedNode, grad) = gradient(x.node.f, grad, x.output, map(value, x.node.args)...; map(value, x.node.kwargs)...)</span><br></pre></td></tr></table></figure>
+<p>Here we dispatch the <code>gradient</code> of a <code>CachedNode</code> directly to a method implemented for <code>Operator</code>, but we have the same situation with <code>forward</code>, we don’t want to write <code>Method</code> trait each time</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">gradient(x::Operator, grad, output, args...; kwargs...) =</span><br><span class="line">    gradient(x.f, grad, output, args...; kwargs...)</span><br></pre></td></tr></table></figure>
+<p>Finally, define a default error massage:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">gradient(fn, grad, output, args...; kwargs...) =</span><br><span class="line">    error(</span><br><span class="line">        <span class="string">&quot;gradient of operator <span class="variable">$fn</span> is not defined\n&quot;</span>,</span><br><span class="line">        <span class="string">&quot;Possible Fix:\n&quot;</span>,</span><br><span class="line">        <span class="string">&quot;define one of the following:\n&quot;</span>,</span><br><span class="line">        <span class="string">&quot;1. gradient(::typeof(<span class="variable">$fn</span>), grad, output, args...; kwargs...)\n&quot;</span>,</span><br><span class="line">        <span class="string">&quot;2. gradient(op::Trait.Method&#123;typeof(<span class="variable">$fn</span>)&#125;, grad, output, args...; kwargs...)\n&quot;</span>,</span><br><span class="line">        <span class="string">&quot;3. gradient(op::Trait.Broadcasted&#123;typeof(<span class="variable">$fn</span>)&#125;, grad, output, args...; kwargs...)\n&quot;</span></span><br><span class="line">    )</span><br></pre></td></tr></table></figure>
+<p>So in this way, when we implement a specific method of some types for <code>gradient</code>, Julia will auto dispatch gradient to that method, e.g</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># I re-define the concrete type `Linear` here in order to store the gradient</span></span><br><span class="line"><span class="keyword">struct</span> Linear &lt;: Operator</span><br><span class="line">  w::Variable&#123;<span class="built_in">Matrix</span>&#123;<span class="built_in">Float64</span>&#125;&#125;</span><br><span class="line">  b::Variable&#123;<span class="built_in">Vector</span>&#123;<span class="built_in">Float64</span>&#125;&#125;</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> gradient(op::Linear, grad, output, x)</span><br><span class="line">  grad_w, grad_b = <span class="comment"># some gradient expression to calculate the gradient of w and b</span></span><br><span class="line">  backward(op.w, grad_w) <span class="comment"># update gradient of w</span></span><br><span class="line">  backward(op.w, grad_b) <span class="comment"># update gradient of b</span></span><br><span class="line"></span><br><span class="line">  grad_input = <span class="comment"># calculate the gradient of input</span></span><br><span class="line">  grad_input <span class="comment"># return the gradient of input</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>Umm, and finally, I would like to have an eye-candy function to construct a node (but this depends on you, it is not actually necessary):</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">register(f, args...; kwargs...) = CachedNode(f, args...; kwargs...)</span><br></pre></td></tr></table></figure>
+<p>Okay, let’s try to register an operator now!</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Base.sin(x::AbstractNode) = register(Base.sin, x)</span><br><span class="line">gradient(::typeof(Base.sin), grad, output, x) = (grad * cos(x), )</span><br></pre></td></tr></table></figure>
+<p><strong>Remember we assumed gradient returns several gradients</strong>, the return of <code>gradient</code> has to be an iteratable of gradients.</p>
+<h2 id="Broadcast"><a href="#Broadcast" class="headerlink" title="Broadcast"></a>Broadcast</h2><p>However, for above gradients for scalars, this will just work. It won’t work for arrays. We will need to re-dispatch broadcast in Julia.</p>
+<p>Let me introduce some basic concepts of the interface of broadcast in Julia first, and then we will find a very easy way<br>to implement AD for broadcast:</p>
+<p>The whole broadcast mechanism is implemented in a module <code>Broadcast</code> in <code>Base</code>, each different type has its own <code>BroadcastStyle</code> (this is a trait). So what we need to do, is just to implement our own broadcast style and construct a<br><code>CachedNode</code> instead directly broadcasting the operation.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> ComputGraphStyle &lt;: Broadcast.BroadcastStyle <span class="keyword">end</span></span><br><span class="line">Base.BroadcastStyle(::<span class="built_in">Type</span>&#123;&lt;:AbstractNode&#125;) = ComputGraphStyle()</span><br><span class="line">Broadcast.BroadcastStyle(s::ComputGraphStyle, x::Broadcast.BroadcastStyle) = s</span><br></pre></td></tr></table></figure>
+<p>However, this is not enough, in Julia broadcast is lazy-evaluated, which can fuse broadcast and provide better performance, we need to re-dispatch two interface: <code>broadcasted</code> and <code>materialize</code></p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> Broadcast.broadcasted(::ComputGraphStyle, f, args...)</span><br><span class="line">    mt = Trait.Broadcasted(f)</span><br><span class="line">    register(mt, args...)</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">Broadcast.materialize(x::AbstractNode) = register(Broadcast.materialize, x)</span><br></pre></td></tr></table></figure>
+<p>And we let <code>materialize</code> directly return the gradient during backward evaluation:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> backward(node::CachedNode, ::typeof(Broadcast.materialize), grad)</span><br><span class="line">    backward_type_assert(node, grad)</span><br><span class="line">    <span class="meta">@boundscheck</span> backward_size_assert(node, grad)</span><br><span class="line">    backward(node.node.args[<span class="number">1</span>], grad) <span class="comment"># materialize only has one arguments, we don&#x27;t need the for loop</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>Now, if you try to broadcast with this AD, you would find that the assertion we defined in <code>backward</code> is quite annoying (because lazy evaluation, its output is not actually the real output, but a middle type), let’s mute them for broadcast:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> backward(node::CachedNode, ::Trait.Broadcasted, grad)</span><br><span class="line">    grad_inputs = gradient(node, grad)</span><br><span class="line">    <span class="keyword">for</span> (each, each_grad) <span class="keyword">in</span> zip(args(node), grad_inputs)</span><br><span class="line">        backward(each, each_grad)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="literal">nothing</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<h2 id="Add-more-operators-for-FREE"><a href="#Add-more-operators-for-FREE" class="headerlink" title="Add more operators for FREE!"></a>Add more operators for FREE!</h2><p>There is a Julia package called <code>DiffRules</code>, it contains quite a lot differentiation rules defined as Julia <code>Expr</code>, so we can just use code generation to generate operators with it rather than define them ourselves:</p>
+<p>The rules are in <code>DiffRules.DEFINED_DIFFRULES</code>, so we will just iterate through its key</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (mod, name, nargs) <span class="keyword">in</span> keys(DiffRules.DEFINED_DIFFRULES)</span><br><span class="line">  <span class="comment"># code generation</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>the first argument <code>mod</code> is the module’s name, like for <code>sin</code>, it is actually in <code>Base</code>, so the <code>mod</code> is <code>Base</code> and<br><code>name</code> is the function’s name, <code>nargs</code> means the number of arguments, in <code>DiffRules</code>, there are only single argument functions<br>and double arguments functions.</p>
+<p>So the code generation will look like</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (mod, name, nargs) <span class="keyword">in</span> keys(DiffRules.DEFINED_DIFFRULES)</span><br><span class="line">    f_ex_head = <span class="built_in">Expr</span>(:., mod, <span class="built_in">QuoteNode</span>(name))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> nargs == <span class="number">1</span></span><br><span class="line">        df_ex = DiffRules.diffrule(mod, name, :x)</span><br><span class="line"></span><br><span class="line">        name === :abs &amp;&amp; <span class="keyword">continue</span> <span class="comment"># exclude abs, it cannot be directly broadcasted</span></span><br><span class="line"></span><br><span class="line">        <span class="meta">@eval</span> <span class="keyword">begin</span></span><br><span class="line">            $(f_ex_head)(x::AbstractNode) = register($(f_ex_head), x)</span><br><span class="line">            gradient(::typeof($(f_ex_head)), grad, output, x) = (grad * $df_ex, )</span><br><span class="line">            gradient(mt::Trait.Broadcasted&#123;typeof($f_ex_head)&#125;, grad, output, x) = (@.(grad * $(df_ex)), )</span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">elseif</span> nargs == <span class="number">2</span></span><br><span class="line">        df_ex = DiffRules.diffrule(mod, name, :x, :y)</span><br><span class="line"></span><br><span class="line">        <span class="meta">@eval</span> <span class="keyword">begin</span></span><br><span class="line"></span><br><span class="line">            $(f_ex_head)(x1::AbstractNode, x2) = register($f_ex_head, x1, x2)</span><br><span class="line">            $(f_ex_head)(x1, x2::AbstractNode) = register($f_ex_head, x1, x2)</span><br><span class="line">            $(f_ex_head)(x1::AbstractNode, x2::AbstractNode) = register($f_ex_head, x1, x2)</span><br><span class="line"></span><br><span class="line">            gradient(::typeof($f_ex_head), grad, output, x, y) =</span><br><span class="line">                (grad * $(df_ex[<span class="number">1</span>]), grad * $(df_ex[<span class="number">2</span>]))</span><br><span class="line">            gradient(::Trait.Broadcasted&#123;typeof($f_ex_head)&#125;, grad, output, x, y) =</span><br><span class="line">                (@.(grad * ($(df_ex[<span class="number">1</span>]))), @.(grad * $(df_ex[<span class="number">2</span>])))</span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="meta">@info</span> <span class="string">&quot;unknown operator <span class="variable">$name</span>&quot;</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>For how to use code generation in Julia, I would recommend the official documentation to get a better understanding of it: <a target="_blank" rel="noopener" href="https://docs.julialang.org/en/v1/manual/metaprogramming/#Code-Generation-1">Code Generation</a>. I escape <code>abs</code> here because the differentiation expression of <code>abs</code> generated by <code>DiffRules</code> can not be directly broadcasted by <code>@.</code> (this macro add a broadcast mark <code>.</code> to every function call), so I have to implement its gradient manually. But <code>DiffRules</code> will generate most of the math function’s gradient for you!</p>
+<h2 id="Polish"><a href="#Polish" class="headerlink" title="Polish"></a>Polish</h2><p>We roughly implemented the core functionality of an AD, but there’s still quite a lot to do to make it look and feel better.</p>
+<p>I defined better printing later here: <a target="_blank" rel="noopener" href="https://github.com/Roger-luo/YAAD.jl/blob/master/src/show.jl">show.jl</a>, the basic idea is to re-dispatch our nodes via several traits, so we can insert a type into another type tree, e.g as subtype of <code>AbstractArray</code> and then make use of existing printing methods.</p>
+<p>Then, to implement unit tests, I copied the <code>gradcheck</code> function from <code>PyTorch</code>, which will calculate the jacobian of an operator with the AD package and compare it with the numerical jacobian.</p>
+<h2 id="Benchmark"><a href="#Benchmark" class="headerlink" title="Benchmark"></a>Benchmark</h2><p>Okay, it is done! With only about 200~300 lines Julia, what can we get? Actually, I thought it would be just a toy, but<br>it is actually amazing, when I tried to use it for my own work:</p>
+<p>So I need to calculate something called <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Matrix_product_state">matrix product state</a>, well, I’m not going to talk about quantum physics, so in short, it is just some rank-3 tensors (3 dimensional array), and we will need to calculate something like the following expression:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tr(x1 * x2 * x3)</span><br></pre></td></tr></table></figure>
+<p>where <code>x1</code>, <code>x2</code>, <code>x3</code> are just matrices.</p>
+<p>So I implemented the gradient of <code>tr</code> and matrix multiplication:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Base.:(*)(lhs::AbstractNode, rhs) = register(Base.:(*), lhs, rhs)</span><br><span class="line">Base.:(*)(lhs, rhs::AbstractNode) = register(Base.:(*), lhs, rhs)</span><br><span class="line">Base.:(*)(lhs::AbstractNode, rhs::AbstractNode) = register(Base.:(*), lhs, rhs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> LinearAlgebra</span><br><span class="line"></span><br><span class="line">LinearAlgebra.tr(x::AbstractNode) = register(LinearAlgebra.tr, x)</span><br><span class="line">gradient(::typeof(tr), grad, output, x) = (grad * <span class="built_in">Matrix</span>(I, size(x)), )</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> gradient(::typeof(*), grad, output, lhs::<span class="built_in">AbstractVecOrMat</span>, rhs::<span class="built_in">AbstractVecOrMat</span>)</span><br><span class="line">    grad * transpose(rhs), transpose(lhs) * grad</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>Now let’s benchmark <code>tr(x1 * x2)</code> on the CPU with other packages, with the following function call</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">Zygote.<span class="meta">@grad</span> LinearAlgebra.tr(x) = LinearAlgebra.tr(x), Δ-&gt; (Δ * <span class="built_in">Matrix</span>(I, size(x)), )</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> bench_tr_mul_yaad(x1, x2)</span><br><span class="line">    z = tr(x1 * x2)</span><br><span class="line">    YAAD.backward(z)</span><br><span class="line">    x1.grad, x2.grad</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> bench_tr_mul_autograd(x1, x2)</span><br><span class="line">    z = AutoGrad.<span class="meta">@diff</span> tr(x1 * x2)</span><br><span class="line">    AutoGrad.grad(z, x1), AutoGrad.grad(z, x2)</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> bench_tr_mul_zygote(x1, x2)</span><br><span class="line">    Zygote.gradient((x1, x2)-&gt;tr(x1 * x2), x1, x2)</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> bench_tr_mul_flux(x1, x2)</span><br><span class="line">    z = tr(x1 * x2)</span><br><span class="line">    back!(z, <span class="number">1</span>)</span><br><span class="line">    Tracker.grad(x1), Tracker.grad(x2)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>and in PyTorch (our interface is quite similar to PyTorch, isn’t it?)</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">bench_tr_mul_torch</span>(<span class="params">x1, x2</span>):</span></span><br><span class="line">    z = torch.trace(torch.matmul(x1, x2))</span><br><span class="line">    z.backward()</span><br><span class="line">    <span class="keyword">return</span> x1.grad, x2.grad</span><br></pre></td></tr></table></figure>
+<p>In Julia, we use <code>BenchmarkTools</code> to measure the time, and in Python we can use the magic command <code>timeit</code> in ipython.</p>
+<p>The value is defined as follows</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">xv, yv = rand(<span class="number">30</span>, <span class="number">30</span>), rand(<span class="number">30</span>, <span class="number">30</span>)</span><br><span class="line">yaad_x, yaad_y = YAAD.Variable(xv), YAAD.Variable(yv)</span><br><span class="line">autograd_x, autograd_y = AutoGrad.Param(xv), AutoGrad.Param(yv)</span><br><span class="line">flux_x, flux_y = Flux.param(xv), Flux.param(yv)</span><br></pre></td></tr></table></figure>
+<p>Before we benchmark other packages, I also wrote a baseline function, which calculates the gradient manually:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> bench_tr_mul_base(x1, x2)</span><br><span class="line">    z1 = x1 * x2</span><br><span class="line">    z2 = tr(z1)</span><br><span class="line"></span><br><span class="line">    grad_z1 = <span class="built_in">Matrix</span>&#123;eltype(z1)&#125;(I, size(z1))</span><br><span class="line">    grad_z1 * transpose(x2), transpose(x1) * grad_z1</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>And then tests it with <code>@benchmark</code>, which will run this function multiple times</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="meta">@benchmark</span> bench_tr_mul_autograd(autograd_x, autograd_y)</span><br><span class="line">BenchmarkTools.Trial:</span><br><span class="line">  memory estimate:  <span class="number">33.20</span> KiB</span><br><span class="line">  allocs estimate:  <span class="number">82</span></span><br><span class="line">  --------------</span><br><span class="line">  minimum time:     <span class="number">50.218</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  median time:      <span class="number">62.364</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  mean time:        <span class="number">90.422</span> μs (<span class="number">9.86</span>% GC)</span><br><span class="line">  maximum time:     <span class="number">55.386</span> ms (<span class="number">99.86</span>% GC)</span><br><span class="line">  --------------</span><br><span class="line">  samples:          <span class="number">10000</span></span><br><span class="line">  evals/sample:     <span class="number">1</span></span><br><span class="line"></span><br><span class="line">julia&gt; <span class="meta">@benchmark</span> bench_tr_mul_yaad(yaad_x, yaad_y)</span><br><span class="line">BenchmarkTools.Trial:</span><br><span class="line">  memory estimate:  <span class="number">51.50</span> KiB</span><br><span class="line">  allocs estimate:  <span class="number">16</span></span><br><span class="line">  --------------</span><br><span class="line">  minimum time:     <span class="number">10.387</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  median time:      <span class="number">13.429</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  mean time:        <span class="number">24.273</span> μs (<span class="number">45.13</span>% GC)</span><br><span class="line">  maximum time:     <span class="number">55.963</span> ms (<span class="number">99.96</span>% GC)</span><br><span class="line">  --------------</span><br><span class="line">  samples:          <span class="number">10000</span></span><br><span class="line">  evals/sample:     <span class="number">1</span></span><br><span class="line"></span><br><span class="line">julia&gt; <span class="meta">@benchmark</span> bench_tr_mul_zygote(xv, yv)</span><br><span class="line">BenchmarkTools.Trial:</span><br><span class="line">  memory estimate:  <span class="number">29.98</span> KiB</span><br><span class="line">  allocs estimate:  <span class="number">10</span></span><br><span class="line">  --------------</span><br><span class="line">  minimum time:     <span class="number">42.527</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  median time:      <span class="number">46.640</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  mean time:        <span class="number">56.996</span> μs (<span class="number">15.31</span>% GC)</span><br><span class="line">  maximum time:     <span class="number">51.718</span> ms (<span class="number">99.90</span>% GC)</span><br><span class="line">  --------------</span><br><span class="line">  samples:          <span class="number">10000</span></span><br><span class="line">  evals/sample:     <span class="number">1</span></span><br><span class="line"></span><br><span class="line">julia&gt; <span class="meta">@benchmark</span> bench_tr_mul_base(xv, yv)</span><br><span class="line">BenchmarkTools.Trial:</span><br><span class="line">  memory estimate:  <span class="number">28.78</span> KiB</span><br><span class="line">  allocs estimate:  <span class="number">5</span></span><br><span class="line">  --------------</span><br><span class="line">  minimum time:     <span class="number">6.413</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  median time:      <span class="number">8.201</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  mean time:        <span class="number">12.215</span> μs (<span class="number">31.57</span>% GC)</span><br><span class="line">  maximum time:     <span class="number">11.012</span> ms (<span class="number">99.87</span>% GC)</span><br><span class="line">  --------------</span><br><span class="line">  samples:          <span class="number">10000</span></span><br><span class="line">  evals/sample:     <span class="number">5</span></span><br><span class="line"></span><br><span class="line">julia&gt; <span class="meta">@benchmark</span> bench_tr_mul_flux(flux_x, flux_y)</span><br><span class="line">BenchmarkTools.Trial:</span><br><span class="line">  memory estimate:  <span class="number">30.25</span> KiB</span><br><span class="line">  allocs estimate:  <span class="number">24</span></span><br><span class="line">  --------------</span><br><span class="line">  minimum time:     <span class="number">8.009</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  median time:      <span class="number">10.002</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  mean time:        <span class="number">14.412</span> μs (<span class="number">30.14</span>% GC)</span><br><span class="line">  maximum time:     <span class="number">16.286</span> ms (<span class="number">99.87</span>% GC)</span><br><span class="line">  --------------</span><br><span class="line">  samples:          <span class="number">10000</span></span><br><span class="line">  evals/sample:     <span class="number">3</span></span><br></pre></td></tr></table></figure>
+<p>and for PyTorch (version v0.4.1)</p>
+<figure class="highlight ipython"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">In [<span class="number">4</span>]: x = torch.rand(<span class="number">30</span>, <span class="number">30</span>, dtype=torch.float64, requires_grad=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line">In [<span class="number">5</span>]: y = torch.rand(<span class="number">30</span>, <span class="number">30</span>, dtype=torch.float64, requires_grad=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line">In [<span class="number">6</span>]: %timeit bench_tr_mul_torch(x, y)</span><br><span class="line"><span class="number">76.8</span> µs ± <span class="number">1.68</span> µs per loop (mean ± std. dev. of <span class="number">7</span> runs, <span class="number">10000</span> loops each)</span><br></pre></td></tr></table></figure>
+<p>Our implementation is not bad, huh? Only about 4~5 μs slower than the baseline due to the dynamic construction of our computational graph in runtime and Flux is the fastest (it is implemented in similar approach), amazing! It is about 5x faster than other packages in either Julia or Python/C++.</p>
+<p>So, as you see, writing an AD package can be super sweet in Julia with multiple dispatch. You can actually write your own AD with reasonable performance in Julia like a pro!</p>
+<h2 id="Acknowledgement"><a href="#Acknowledgement" class="headerlink" title="Acknowledgement"></a>Acknowledgement</h2><p>Thanks for Keno for benchmarking advice on Zygote, I was actually quite confused about the performance and submitted an issue here: <a target="_blank" rel="noopener" href="https://github.com/FluxML/Zygote.jl/issues/28">Zygote.jl/issues/28</a></p>
+<p>And thanks for the <a target="_blank" rel="noopener" href="https://github.com/JuliaGraphics/Luxor.jl">Luxor.jl</a> package, I use this for plotting the animation in this blog post. You might want to check my ugly plotting script here: <a target="_blank" rel="noopener" href="https://github.com/Roger-luo/YAAD.jl/blob/master/docs/plot.jl">plot.jl</a></p>
+<p>Finally, thanks for Travis Ashworth for helping me on polishing the blog post. This is actually my first time to blog in English, and I didn’t check this blog post carefully. And now I have two Travis (another Travis is the Travis-CI which builds my blog automatically.)</p>
+
+    </div>
+
+    
+    
+    
+        
+
+  <div class="followme">
+    <p>Welcome to my other publishing channels</p>
+
+    <div class="social-list">
+
+        <div class="social-item">
+          <a target="_blank" class="social-link" href="https://twitter.com/rogerluorl18">
+            <span class="icon">
+              <i class="fab fa-twitter"></i>
+            </span>
+
+            <span class="label">Twitter</span>
+          </a>
+        </div>
+    </div>
+  </div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/automatic-differentiation/" rel="tag"># automatic differentiation</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2019/07/27/yassad/" rel="next" title="Implement Your Own Source To Source AD in ONE day!">
+      Implement Your Own Source To Source AD in ONE day! <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="disqus_thread">
+      <noscript>Please enable JavaScript to view the comments powered by Disqus.</noscript>
+    </div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Automatic-Differentiation-A-Brief-Intro"><span class="nav-number">1.</span> <span class="nav-text">Automatic Differentiation: A Brief Intro</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Comput-Graph"><span class="nav-number">1.1.</span> <span class="nav-text">Comput-Graph</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Dynamic-Comput-Graphs-VS-Static-Comput-Graphs"><span class="nav-number">1.2.</span> <span class="nav-text">Dynamic Comput Graphs VS Static Comput Graphs</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Define-the-Nodes-in-the-Computational-Graph"><span class="nav-number">2.</span> <span class="nav-text">Define the Nodes in the Computational Graph</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Leaf-Nodes"><span class="nav-number">2.1.</span> <span class="nav-text">Leaf Nodes</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Other-Nodes"><span class="nav-number">2.2.</span> <span class="nav-text">Other Nodes</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Evaluations"><span class="nav-number">3.</span> <span class="nav-text">Evaluations</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Forward-Evaluation"><span class="nav-number">3.1.</span> <span class="nav-text">Forward Evaluation</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Backward-Evaluation"><span class="nav-number">3.2.</span> <span class="nav-text">Backward Evaluation</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Broadcast"><span class="nav-number">4.</span> <span class="nav-text">Broadcast</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Add-more-operators-for-FREE"><span class="nav-number">5.</span> <span class="nav-text">Add more operators for FREE!</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Polish"><span class="nav-number">6.</span> <span class="nav-text">Polish</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Benchmark"><span class="nav-number">7.</span> <span class="nav-text">Benchmark</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Acknowledgement"><span class="nav-number">8.</span> <span class="nav-text">Acknowledgement</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Xiu-Zhe (Roger) Luo</p>
+  <div class="site-description" itemprop="description">Where I writes about Machine Learning, Quanutm Physics, and more.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/Roger-luo" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;Roger-luo" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/rogerluorl18" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;rogerluorl18" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xiu-Zhe (Roger) Luo</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+      
+
+<script>
+  if (typeof MathJax === 'undefined') {
+    window.MathJax = {
+      loader: {
+        source: {
+          '[tex]/amsCd': '[tex]/amscd',
+          '[tex]/AMScd': '[tex]/amscd'
+        }
+      },
+      tex: {
+        inlineMath: {'[+]': [['$', '$']]},
+        tags: 'ams'
+      },
+      options: {
+        renderActions: {
+          findScript: [10, doc => {
+            document.querySelectorAll('script[type^="math/tex"]').forEach(node => {
+              const display = !!node.type.match(/; *mode=display/);
+              const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display);
+              const text = document.createTextNode('');
+              node.parentNode.replaceChild(text, node);
+              math.start = {node: text, delim: '', n: 0};
+              math.end = {node: text, delim: '', n: 0};
+              doc.math.push(math);
+            });
+          }, '', false],
+          insertedScript: [200, () => {
+            document.querySelectorAll('mjx-container').forEach(node => {
+              let target = node.parentNode;
+              if (target.nodeName.toLowerCase() === 'li') {
+                target.parentNode.classList.add('has-jax');
+              }
+            });
+          }, '', false]
+        }
+      }
+    };
+    (function () {
+      var script = document.createElement('script');
+      script.src = '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+      script.defer = true;
+      document.head.appendChild(script);
+    })();
+  } else {
+    MathJax.startup.document.state(0);
+    MathJax.texReset();
+    MathJax.typeset();
+  }
+</script>
+
+    
+
+  
+
+<script>
+  function loadCount() {
+    var d = document, s = d.createElement('script');
+    s.src = 'https://blog-rogerluo-me.disqus.com/count.js';
+    s.id = 'dsq-count-scr';
+    (d.head || d.body).appendChild(s);
+  }
+  // defer loading until the whole page loading is completed
+  window.addEventListener('load', loadCount, false);
+</script>
+<script>
+  var disqus_config = function() {
+    this.page.url = "http://rogerluo.me/blog/2018/10/23/write-an-ad-in-one-day/";
+    this.page.identifier = "2018/10/23/write-an-ad-in-one-day/";
+    this.page.title = "Implement Your Own Automatic Differentiation with Julia in ONE day";
+    };
+  NexT.utils.loadComments(document.querySelector('#disqus_thread'), () => {
+    if (window.DISQUS) {
+      DISQUS.reset({
+        reload: true,
+        config: disqus_config
+      });
+    } else {
+      var d = document, s = d.createElement('script');
+      s.src = 'https://blog-rogerluo-me.disqus.com/embed.js';
+      s.setAttribute('data-timestamp', '' + +new Date());
+      (d.head || d.body).appendChild(s);
+    }
+  });
+</script>
+
+</body>
+</html>

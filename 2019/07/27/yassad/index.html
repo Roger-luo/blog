@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"rogerluo.me","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="I wrote a blog post about how to implement your own (operator overloading based) automatic differentiation (AD) in one day (actually 3 hrs) last year. AD looks like magic sometimes, but I’m going to t">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Implement Your Own Source To Source AD in ONE day!">
+<meta property="og:url" content="http://rogerluo.me/blog/2019/07/27/yassad/index.html">
+<meta property="og:site_name" content="Half Integer">
+<meta property="og:description" content="I wrote a blog post about how to implement your own (operator overloading based) automatic differentiation (AD) in one day (actually 3 hrs) last year. AD looks like magic sometimes, but I’m going to t">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://rogerluo.me/images/julia-compile-diagram.png">
+<meta property="og:image" content="http://rogerluo.me/images/comput-graph-forward.gif">
+<meta property="og:image" content="http://rogerluo.me/images/julia-generated-compile-diagram.png">
+<meta property="article:published_time" content="2019-07-27T18:49:33.000Z">
+<meta property="article:modified_time" content="2020-12-21T08:06:56.124Z">
+<meta property="article:author" content="Xiu-Zhe (Roger) Luo">
+<meta property="article:tag" content="automatic differentiation">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://rogerluo.me/images/julia-compile-diagram.png">
+
+<link rel="canonical" href="http://rogerluo.me/blog/2019/07/27/yassad/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Implement Your Own Source To Source AD in ONE day! | Half Integer</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Half Integer</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Xiu-Zhe (Roger) Luo's Blog</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://rogerluo.me/blog/2019/07/27/yassad/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Xiu-Zhe (Roger) Luo">
+      <meta itemprop="description" content="Where I writes about Machine Learning, Quanutm Physics, and more.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Half Integer">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Implement Your Own Source To Source AD in ONE day!
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2019-07-27 14:49:33" itemprop="dateCreated datePublished" datetime="2019-07-27T14:49:33-04:00">2019-07-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-12-21 03:06:56" itemprop="dateModified" datetime="2020-12-21T03:06:56-05:00">2020-12-21</time>
+              </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Disqus: </span>
+    
+    <a title="disqus" href="/2019/07/27/yassad/#disqus_thread" itemprop="discussionUrl">
+      <span class="post-comments-count disqus-comment-count" data-disqus-identifier="2019/07/27/yassad/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>I wrote a blog post about how to implement your own (operator overloading based) automatic differentiation (AD) in one day (actually 3 hrs) last year. AD looks like magic sometimes, but I’m going to talk about some black magic this time: the source<br>to source automatic differentiation. I wrote this during JuliaCon 2019 hackthon with help from <a target="_blank" rel="noopener" href="https://github.com/MikeInnes">Mike Innes</a>.<br>It turns out that writing a blog post takes longer than writing a source to source AD ;-). This is basically just simple version of Zygote.</p>
+<p>I wrap this thing as a very simple package here, if you want to look at more detailed implementation: <a target="_blank" rel="noopener" href="https://github.com/Roger-luo/YASSAD.jl">YASSAD.jl</a>.</p>
+<p>If you have used operator overloading based AD like <a target="_blank" rel="noopener" href="https://github.com/pytorch/pytorch">PyTorch</a>, <a target="_blank" rel="noopener" href="https://github.com/FluxML/Tracker.jl">Flux/Tracker</a>, <a target="_blank" rel="noopener" href="https://github.com/HIPS/autograd">AutoGrad</a>, you may find they have some limitations:</p>
+<ul>
+<li>A <code>Tensor</code> type or <code>Variable</code> type provided by the package has to be used for tracing the function calls</li>
+<li>They cannot handle control flows in general, even in some cases, some workarounds can be taken</li>
+</ul>
+<p>However, programming without control flow is not programming! And it is usually very annoying to rewrite a lot code with tracked types. If we want to have a framework for <strong>Differentiable Programming</strong> as what people like <strong>Yan LeCun</strong> has been proposing, we need to solve these two problems above.</p>
+<p>In fact, these problems are quite straight forward to solve in source to source automatic differentiation, since we basically know everything happens. I will implement a very simple source to source AD without handling control flows, you can also check the complete implementation as <a target="_blank" rel="noopener" href="https://github.com/FluxML/Zygote.jl">Zygote.jl</a>.</p>
+<p>But before we start, let’s review some basic knowledge.</p>
+<h2 id="Basics"><a href="#Basics" class="headerlink" title="Basics"></a>Basics</h2><h3 id="The-compilation-process-of-Julia-language"><a href="#The-compilation-process-of-Julia-language" class="headerlink" title="The compilation process of Julia language"></a>The compilation process of Julia language</h3><p>I will briefly introduce how Julia program is compiled and run in this section:</p>
+<ol>
+<li>all the code are just strings</li>
+<li>the Julia parser will parse the strings first to get an Abstract Syntax Tree (AST)</li>
+<li>some of the nodes in this AST are macros, macros are like compiled time functions on expressions, the compiler will expand the macros. Then we get an expanded version of AST, which do not have any macros. You can inspect the results with <code>@macroexpand</code>.</li>
+<li>Now, we will lower the AST, get rid of syntax sugars and represent them in Static Single Assignment Form (SSA), you can get it with <code>@code_lowered</code>, and you can modify this process with Julia <code>macro</code>s.</li>
+<li>When function call happens, we use the function signature to dispatch the function to a certain method, and start doing type inference. You can modify this process with <code>@generated</code> functions, and check the results with <code>@code_typed</code>.</li>
+<li>The compiler will then generate the llvm IR. You can inspect them with <code>@code_llvm</code></li>
+<li>After we have llvm IR, Julia will use llvm to generate native code to actually exectute this function.</li>
+<li>By executing the function, we will meet another function call, so we go back to step 5</li>
+</ol>
+<p>I steal a diagram from JuliaCon 2018 to demonstrate this process:</p>
+<p><img src="/images/julia-compile-diagram.png"></p>
+<p>As you can see. Julia is not a static compiled language, and it uses function as boundary of compilation.</p>
+<h3 id="SSA-Form-IR"><a href="#SSA-Form-IR" class="headerlink" title="SSA Form IR"></a>SSA Form IR</h3><p>A complete introduction of SSA can be <a target="_blank" rel="noopener" href="http://ssabook.gforge.inria.fr/latest/book.pdf">a book</a>. But to implement your own source<br>to source AD only require three simple concept:</p>
+<ul>
+<li>all the variable will only be assigned once</li>
+<li>most variable comes from function calls</li>
+<li>all the control flows become branches</li>
+</ul>
+<p>If you have read my last post, I believe you have understand what is computation graph, but now let’s look at this diagram again: what is this computation graph exactly?</p>
+<p><img src="/images/comput-graph-forward.gif" alt="comput-graph"></p>
+<p>While doing the automatic differentiation, we represent the process of computation as a diagram. Each node is an operator with a intermediate value. And each operator also have an <strong>adjoint operator</strong> which will be used in backward pass. Which means each variable<br>in each node will only be assigned once. This is just a simple version of SSA Form right?</p>
+<p>The gradient can be then considered as an adjoint program of the original program. And the only thing we need to do is to generate the adjoint program. In fact, this is often called Wengert list, tape or graph as described in <a target="_blank" rel="noopener" href="https://arxiv.org/pdf/1810.07951.pdf">Zygote’s paper: Don’t Unroll Adjoint</a>. Thus we can directly use the SSA form as our computational graph. Moreover, since in Julia the SSA form IR is lowered, it also means we only need to defined a few primitive routines instead of defining a lot operators.</p>
+<p>Since the backward pass is just an adjoint of the original program, we can just write it as a closure</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> forward(::typeof(your_function), xs...)</span><br><span class="line">    <span class="comment"># function declaration</span></span><br><span class="line">    output = <span class="comment"># function output</span></span><br><span class="line">    output, <span class="keyword">function</span> (Δ)</span><br><span class="line">        <span class="comment"># a closure</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>The advantage of defining this as closure is that we can let the compiler itself handle shared variable between the adjoint program<br>and the original program instead of managing it ourselves (like what we do in my last post). We call these closures <strong>pullback</strong>s.</p>
+<p>So given a function like the following</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> foo(x)</span><br><span class="line">    a = bar(x)</span><br><span class="line">    b = baz(x)</span><br><span class="line">    <span class="keyword">return</span> b</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>If we do this manually, we only need to define a <code>forward</code> function</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> forward(::typeof(foo), x)</span><br><span class="line">      x1, back1 = forward(baz, x)</span><br><span class="line">      x2, back2 = forward(bar, x1)</span><br><span class="line">      <span class="keyword">return</span> x2, <span class="keyword">function</span> (Δ)</span><br><span class="line">         dx1 = back2(Δ)</span><br><span class="line">         dx2 = back1(dx1)</span><br><span class="line">         <span class="keyword">return</span> dx2</span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>In general, an adjoint program without control flow is just applying these pullbacks generated by their <strong>forward</strong> function in reversed order. But how do we do this automatically? Someone may say: let’s use macros! Err, we can do that. But our goal is to differentiate arbitrary function defined by someone else, so things can be composable. This is not what we want. Instead, we can tweak the IR, the <strong>generated function</strong>s in Julia can not only return a modified AST from type information, it can also return the IR.</p>
+<p>The generated function can be declared with a <code>@generated</code> macro</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@generated</span> <span class="keyword">function</span> foo(a, b, c)</span><br><span class="line">    <span class="keyword">return</span> :(<span class="number">1</span> + <span class="number">1</span>)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>It looks like a function as well, but the difference is that inside the function, the value of each function argument <code>a</code>, <code>b</code>, <code>c</code><br>is their type since we do not have their values during compile time.</p>
+<p><img src="/images/julia-generated-compile-diagram.png"></p>
+<p>In order to manipulate the IR, we need some tools. Fortunately, there are some in <a target="_blank" rel="noopener" href="https://github.com/MikeInnes/IRTools.jl">IRTools</a>, we will use this package to generate the IR code.</p>
+<p>First, we can use <code>@code_ir</code> to get the <code>IR</code> object processed by <code>IRTools</code>. Its type is <code>IR</code>. The difference between the one you get from <code>@code_lowered</code> is that this will not store the argument name, all the variables are represented by numbers, and there are some useful function implemented for this type.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="meta">@code_ir</span> foo(<span class="number">1.0</span>)</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">3</span> = (Main.baz)(%<span class="number">2</span>)</span><br><span class="line">  %<span class="number">4</span> = (Main.bar)(%<span class="number">3</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">4</span></span><br></pre></td></tr></table></figure>
+<p>In this form, each line of code is binded to a variable, we call the right hand statement, and left hand variable. You use a dict-like interface to use this object, e.g</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="keyword">using</span> IRTools: var</span><br><span class="line"></span><br><span class="line">julia&gt; ir[var(<span class="number">3</span>)]</span><br><span class="line">IRTools.Statement(:((Main.baz)(%<span class="number">2</span>)), <span class="built_in">Any</span>, <span class="number">1</span>)</span><br></pre></td></tr></table></figure>
+<p>It will return a statement object, which stores the expression of this statement, the inferred type (since we are using the IR before type inference, this is <code>Any</code>). For simplicity, we will not use typed IR in this post (since in principal, their implementations are similar). The last number is the line number.</p>
+<p>What is the first number <code>1</code> in the whole block? It means code block, in SSA form we use this to represent branches, e.g</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="keyword">function</span> foo(x)</span><br><span class="line">           <span class="keyword">if</span> x &gt; <span class="number">1</span></span><br><span class="line">               bar(x)</span><br><span class="line">           <span class="keyword">else</span></span><br><span class="line">               baz(x)</span><br><span class="line">           <span class="keyword">end</span></span><br><span class="line">       <span class="keyword">end</span></span><br><span class="line">foo (generic <span class="keyword">function</span> with <span class="number">1</span> method)</span><br><span class="line"></span><br><span class="line">julia&gt; <span class="meta">@code_ir</span> foo(<span class="number">1.0</span>)</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">3</span> = %<span class="number">2</span> &gt; <span class="number">1</span></span><br><span class="line">  br <span class="number">3</span> unless %<span class="number">3</span></span><br><span class="line"><span class="number">2</span>:</span><br><span class="line">  %<span class="number">4</span> = (Main.bar)(%<span class="number">2</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">4</span></span><br><span class="line"><span class="number">3</span>:</span><br><span class="line">  %<span class="number">5</span> = (Main.baz)(%<span class="number">2</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">5</span></span><br></pre></td></tr></table></figure>
+<p><code>ifelse</code> is just branch statement in lowered SSA form, and in fact, <code>for</code> loops are similar. Julia’s for loop is just a syntax sugar of <code>iterate</code> function. As long as we can differentiate through <code>br</code>, we will be able to differentiate through control flows.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="keyword">function</span> foo(x)</span><br><span class="line">           <span class="keyword">for</span> x <span class="keyword">in</span> <span class="number">1</span>:<span class="number">10</span></span><br><span class="line">               bar(x)</span><br><span class="line">           <span class="keyword">end</span></span><br><span class="line">           baz(x)</span><br><span class="line">       <span class="keyword">end</span></span><br><span class="line">foo (generic <span class="keyword">function</span> with <span class="number">1</span> method)</span><br><span class="line"></span><br><span class="line">julia&gt; <span class="meta">@code_ir</span> foo(<span class="number">1.0</span>)</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">3</span> = <span class="number">1</span>:<span class="number">10</span></span><br><span class="line">  %<span class="number">4</span> = (Base.iterate)(%<span class="number">3</span>)</span><br><span class="line">  %<span class="number">5</span> = %<span class="number">4</span> === <span class="literal">nothing</span></span><br><span class="line">  %<span class="number">6</span> = (Base.not_int)(%<span class="number">5</span>)</span><br><span class="line">  br <span class="number">3</span> unless %<span class="number">6</span></span><br><span class="line">  br <span class="number">2</span> (%<span class="number">4</span>)</span><br><span class="line"><span class="number">2</span>: (%<span class="number">7</span>)</span><br><span class="line">  %<span class="number">8</span> = (Core.getfield)(%<span class="number">7</span>, <span class="number">1</span>)</span><br><span class="line">  %<span class="number">9</span> = (Core.getfield)(%<span class="number">7</span>, <span class="number">2</span>)</span><br><span class="line">  %<span class="number">10</span> = (Main.bar)(%<span class="number">8</span>)</span><br><span class="line">  %<span class="number">11</span> = (Base.iterate)(%<span class="number">3</span>, %<span class="number">9</span>)</span><br><span class="line">  %<span class="number">12</span> = %<span class="number">11</span> === <span class="literal">nothing</span></span><br><span class="line">  %<span class="number">13</span> = (Base.not_int)(%<span class="number">12</span>)</span><br><span class="line">  br <span class="number">3</span> unless %<span class="number">13</span></span><br><span class="line">  br <span class="number">2</span> (%<span class="number">11</span>)</span><br><span class="line"><span class="number">3</span>:</span><br><span class="line">  %<span class="number">14</span> = (Main.baz)(%<span class="number">2</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">14</span></span><br></pre></td></tr></table></figure>
+<p>So how do we get the IR? In order to get the IR, we need to know which method is dispatched for this generic function. Each generic<br>function in Julia has a method table, you can use the type signature of the function call to get this method, e.g when you call <code>foo(1.0)</code>, Julia will generate <code>Tuple&#123;typeof(foo), Float64&#125;</code> to call the related method. We can get the meta information of this method by providing the <code>IRTools.meta</code> function with this type signature</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; IRTools.IR(m)</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">3</span> = (Main.baz)(%<span class="number">2</span>)</span><br><span class="line">  %<span class="number">4</span> = (Main.bar)(%<span class="number">3</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">4</span></span><br></pre></td></tr></table></figure>
+<p>And we can manipulate this IR with functions like <code>push!</code>:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; push!(ir, :(<span class="number">1</span>+<span class="number">1</span>))</span><br><span class="line">%<span class="number">5</span></span><br><span class="line"></span><br><span class="line">julia&gt; ir</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">3</span> = (Main.baz)(%<span class="number">2</span>)</span><br><span class="line">  %<span class="number">4</span> = (Main.bar)(%<span class="number">3</span>)</span><br><span class="line">  %<span class="number">5</span> = <span class="number">1</span> + <span class="number">1</span></span><br><span class="line">  <span class="keyword">return</span> %<span class="number">4</span></span><br></pre></td></tr></table></figure>
+<p><code>IRTools</code> will add the variable name for you automatically here. Similarly, we can use <code>insert!</code> to insert a statement before the 4th variable:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="keyword">using</span> IRTools: var</span><br><span class="line"></span><br><span class="line">julia&gt; insert!(ir, var(<span class="number">4</span>), :(<span class="number">1</span>+<span class="number">1</span>))</span><br><span class="line">%<span class="number">5</span></span><br><span class="line"></span><br><span class="line">julia&gt; ir</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">3</span> = (Main.baz)(%<span class="number">2</span>)</span><br><span class="line">  %<span class="number">5</span> = <span class="number">1</span> + <span class="number">1</span></span><br><span class="line">  %<span class="number">4</span> = (Main.bar)(%<span class="number">3</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">4</span></span><br></pre></td></tr></table></figure>
+<p>Or we can insert a statement after the 4th variable:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="keyword">using</span> IRTools: insertafter!</span><br><span class="line"></span><br><span class="line">julia&gt; insertafter!(ir, var(<span class="number">4</span>), :(<span class="number">2</span>+<span class="number">2</span>))</span><br><span class="line">%<span class="number">6</span></span><br><span class="line"></span><br><span class="line">julia&gt; ir</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">3</span> = (Main.baz)(%<span class="number">2</span>)</span><br><span class="line">  %<span class="number">5</span> = <span class="number">1</span> + <span class="number">1</span></span><br><span class="line">  %<span class="number">4</span> = (Main.bar)(%<span class="number">3</span>)</span><br><span class="line">  %<span class="number">6</span> = <span class="number">2</span> + <span class="number">2</span></span><br><span class="line">  <span class="keyword">return</span> %<span class="number">4</span></span><br></pre></td></tr></table></figure>
+<p>With these tools, we can now do the transformation of forward pass. Our goal is to replace each function call with the function call to <code>forward</code> function and then collect all the pullbacks returned by <code>forward</code> function to generate a closure. But wait! I didn’t mention closure, what is the closure in SSA IR? Let’s consider this later, and implement the transformation of forward part first.</p>
+<p>Let’s take a statement and have a look</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; dump(ir[var(<span class="number">3</span>)])</span><br><span class="line">IRTools.Statement</span><br><span class="line">  expr: <span class="built_in">Expr</span></span><br><span class="line">    head: <span class="built_in">Symbol</span> call</span><br><span class="line">    args: <span class="built_in">Array</span>&#123;<span class="built_in">Any</span>&#125;((<span class="number">2</span>,))</span><br><span class="line">      <span class="number">1</span>: <span class="built_in">GlobalRef</span></span><br><span class="line">        mod: <span class="built_in">Module</span> Main</span><br><span class="line">        name: <span class="built_in">Symbol</span> baz</span><br><span class="line">      <span class="number">2</span>: IRTools.Variable</span><br><span class="line">        id: <span class="built_in">Int64</span> <span class="number">2</span></span><br><span class="line">  type: <span class="built_in">Any</span></span><br><span class="line">  line: <span class="built_in">Int64</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
+<p>In fact, we only need to check whether the signature of its expression is <code>call</code>. We can use the <code>Pipe</code> object in <code>IRTools</code> to do the transformation, the transformation results are stored in its member <code>to</code>.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; IRTools.<span class="built_in">Pipe</span>(ir).to</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+<h2 id="Implementation"><a href="#Implementation" class="headerlink" title="Implementation"></a>Implementation</h2><h3 id="Forward-Transformation"><a href="#Forward-Transformation" class="headerlink" title="Forward Transformation"></a>Forward Transformation</h3><p>We name this function as <code>register</code> since it has similar functionality as our old <code>register</code> function in my last post. The only difference is: you don’t need to write this <code>register</code> function manually for each operator now! We are going to do this automatically. </p>
+<p><strong>Warning</strong>: since I’m doing this demo in REPL, I use <code>Main</code> module directly, if you put the code in your own module, replace it with your module name.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> register(ir)</span><br><span class="line">    pr = <span class="built_in">Pipe</span>(ir)</span><br><span class="line">    argument!(pr, at = <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">for</span> (v, st) <span class="keyword">in</span> pr</span><br><span class="line">        ex = st.expr</span><br><span class="line">        <span class="keyword">if</span> Meta.isexpr(ex, :call)</span><br><span class="line">            yJ = insert!(pr, v, stmt(xcall(Main, :forward, ex.args...), line = ir[v].line))</span><br><span class="line">            pr[v] = xgetindex(yJ, <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    finish(pr)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>I’ll explain what I do here: first since we are generating the IR for the <code>forward</code> function, we have an extra argument now</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">forward(f, args...)</span><br></pre></td></tr></table></figure>
+<p>Thus, I added one argument at the beginning of this function’s IR.</p>
+<p>Then, we need to iterate through all the variables and statements, if the statement is a function call then we replace it with the call<br>to <code>forward</code> function. Remember to keep the line number here, since we still want some error message. Since the returned value of <code>forward</code> is a tuple of actually forward evaluation and the pullback, to get the correct result we need to index this tuple, and replace<br>the original variable with the new one. The <code>xgetindex</code> here is a convenient function that generates the expression of <code>getindex</code></p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xgetindex(x, i...) = xcall(Base, :getindex, x, i...)</span><br></pre></td></tr></table></figure>
+<p>Let’s see what we get</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; register(ir)</span><br><span class="line"><span class="number">1</span>: (%<span class="number">3</span>, %<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">4</span> = (Main.forward)(Main.baz, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">5</span> = (Base.getindex)(%<span class="number">4</span>, <span class="number">1</span>)</span><br><span class="line">  %<span class="number">6</span> = (Main.forward)(Main.bar, %<span class="number">5</span>)</span><br><span class="line">  %<span class="number">7</span> = (Base.getindex)(%<span class="number">6</span>, <span class="number">1</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">7</span></span><br></pre></td></tr></table></figure>
+<p>Nice! We change the function call to forward now!</p>
+<p>Now, it’s time to consider the closure problem. Yes, in this lowered form, we don’t have closures. But we can instead store them in a callable object!</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> Pullback&#123;S, T&#125;</span><br><span class="line">    data::T</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">Pullback&#123;S&#125;(data::T) <span class="keyword">where</span> &#123;S, T&#125; = Pullback&#123;S, T&#125;(data)</span><br></pre></td></tr></table></figure>
+<p>This object will also store the function signature, so when we call pullback, we can look up the IR of the original call to generate the IR of this pullback. The member <code>data</code> here will store a <code>Tuple</code> of all pullbacks with the order of their <code>forward</code> call. In order to construct the <code>Pullback</code> we need the signature of our function call, so we need to revise our implementation as following.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> register(ir, F)</span><br><span class="line">    pr = <span class="built_in">Pipe</span>(ir)</span><br><span class="line">    pbs = Variable[]</span><br><span class="line">    argument!(pr, at = <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">for</span> (v, st) <span class="keyword">in</span> pr</span><br><span class="line">        ex = st.expr</span><br><span class="line">        <span class="keyword">if</span> Meta.isexpr(ex, :call)</span><br><span class="line">            yJ = insert!(pr, v, stmt(xcall(Main, :forward, ex.args...), line = ir[v].line))</span><br><span class="line">            pr[v] = xgetindex(yJ, <span class="number">1</span>)</span><br><span class="line">            J = insertafter!(pr, v, stmt(xgetindex(yJ, <span class="number">2</span>), line = ir[v].line))</span><br><span class="line">            push!(pbs, substitute(pr, J))</span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    pr = finish(pr)</span><br><span class="line">    v = push!(pr, xtuple(pbs...))</span><br><span class="line">    pbv = push!(pr, <span class="built_in">Expr</span>(:call, Pullback&#123;F&#125;, v))</span><br><span class="line">    <span class="keyword">return</span> pr</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>In order to store the pullbacks, we need to get the pullback from the tuple returned by <code>forward</code> and allocate a list to record all pullbacks.</p>
+<p>Here <code>xtuple</code> is similar to <code>xgetindex</code>, it is used to generate the expression of constructing a tuple.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xtuple(xs...) = xcall(Core, :tuple, xs...)</span><br></pre></td></tr></table></figure>
+<p>Let’s pack the pullback and the original returned value as a tuple together, and return it!</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> register(ir, F)</span><br><span class="line">    pr = <span class="built_in">Pipe</span>(ir)</span><br><span class="line">    pbs = Variable[]</span><br><span class="line">    argument!(pr, at = <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">for</span> (v, st) <span class="keyword">in</span> pr</span><br><span class="line">        ex = st.expr</span><br><span class="line">        <span class="keyword">if</span> Meta.isexpr(ex, :call)</span><br><span class="line">            yJ = insert!(pr, v, stmt(xcall(Main, :forward, ex.args...), line = ir[v].line))</span><br><span class="line">            pr[v] = xgetindex(yJ, <span class="number">1</span>)</span><br><span class="line">            J = insertafter!(pr, v, stmt(xgetindex(yJ, <span class="number">2</span>), line = ir[v].line))</span><br><span class="line">            push!(pbs, substitute(pr, J))</span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    pr = finish(pr)</span><br><span class="line">    v = push!(pr, xtuple(pbs...))</span><br><span class="line">    pbv = push!(pr, <span class="built_in">Expr</span>(:call, Pullback&#123;F&#125;, v))</span><br><span class="line">    ret = pr.blocks[<span class="keyword">end</span>].branches[<span class="keyword">end</span>].args[<span class="number">1</span>]</span><br><span class="line">    ret = push!(pr, xtuple(ret, pbv))</span><br><span class="line">    pr.blocks[<span class="keyword">end</span>].branches[<span class="keyword">end</span>].args[<span class="number">1</span>] = ret</span><br><span class="line">    <span class="keyword">return</span> pr, pbs</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>The <code>return</code> statement is actually a simple branch, it is the last branch of the last statement of the last code block.</p>
+<p>OK, let’s see what we get now</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; register(ir, <span class="built_in">Tuple</span>&#123;typeof(foo), <span class="built_in">Float64</span>&#125;)</span><br><span class="line"><span class="number">1</span>: (%<span class="number">3</span>, %<span class="number">1</span>, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">4</span> = (Main.forward)(Main.baz, %<span class="number">2</span>)</span><br><span class="line">  %<span class="number">5</span> = (Base.getindex)(%<span class="number">4</span>, <span class="number">1</span>)</span><br><span class="line">  %<span class="number">6</span> = (Base.getindex)(%<span class="number">4</span>, <span class="number">2</span>)</span><br><span class="line">  %<span class="number">7</span> = (Main.forward)(Main.bar, %<span class="number">5</span>)</span><br><span class="line">  %<span class="number">8</span> = (Base.getindex)(%<span class="number">7</span>, <span class="number">1</span>)</span><br><span class="line">  %<span class="number">9</span> = (Base.getindex)(%<span class="number">7</span>, <span class="number">2</span>)</span><br><span class="line">  %<span class="number">10</span> = (Core.tuple)(%<span class="number">9</span>, %<span class="number">6</span>)</span><br><span class="line">  %<span class="number">11</span> = (Pullback&#123;<span class="built_in">Tuple</span>&#123;typeof(foo),<span class="built_in">Float64</span>&#125;,T&#125; <span class="keyword">where</span> T)(%<span class="number">10</span>)</span><br><span class="line">  %<span class="number">12</span> = (Core.tuple)(%<span class="number">8</span>, %<span class="number">11</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">12</span></span><br></pre></td></tr></table></figure>
+<p>Now let’s implement the <code>forward</code> function</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@generated</span> <span class="keyword">function</span> forward(f, xs...)</span><br><span class="line">    T = <span class="built_in">Tuple</span>&#123;f, xs...&#125;</span><br><span class="line">    m = IRTools.meta(T)</span><br><span class="line">    m === <span class="literal">nothing</span> &amp;&amp; <span class="keyword">return</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>We will get the meta first, if the meta is <code>nothing</code>, it means this method doesn’t exist, so we just stop here. If we have the meta, then<br>we can get the <code>IR</code> from it and put it to <code>register</code></p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@generated</span> <span class="keyword">function</span> forward(f, xs...)</span><br><span class="line">    T = <span class="built_in">Tuple</span>&#123;f, xs...&#125;</span><br><span class="line">    m = IRTools.meta(T)</span><br><span class="line">    m === <span class="literal">nothing</span> &amp;&amp; <span class="keyword">return</span></span><br><span class="line">    frw = register(IR(m), T)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>However, the object <code>frw</code> has type <code>IR</code> instead of <code>CodeInfo</code>, to generate the <code>CodeInfo</code> for Julia compiler, we need to put argument names back with</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">argnames!(m, <span class="built_in">Symbol</span>(<span class="string">&quot;#self#&quot;</span>), :f, :xs)</span><br></pre></td></tr></table></figure>
+<p>And since the second argument of our <code>forward</code> function is a vararg, we need to tag it to let our compiler know, so the compiler will not feed the first function call with a <code>Tuple</code>.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">frw = varargs!(m, frw, <span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+<p>In the end, our forward function will looks like</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@generated</span> <span class="keyword">function</span> forward(f, xs...)</span><br><span class="line">    T = <span class="built_in">Tuple</span>&#123;f, xs...&#125;</span><br><span class="line">    m = IRTools.meta(T)</span><br><span class="line">    m === <span class="literal">nothing</span> &amp;&amp; <span class="keyword">return</span></span><br><span class="line">    frw = register(IR(m), T)</span><br><span class="line">    argnames!(m, <span class="built_in">Symbol</span>(<span class="string">&quot;#self#&quot;</span>), :f, :xs)</span><br><span class="line">    frw = varargs!(m, frw, <span class="number">2</span>)</span><br><span class="line">    <span class="keyword">return</span> IRTools.update!(m, frw)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>Let’s see what we got now</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="meta">@code_ir</span> forward(foo, <span class="number">1.0</span>)</span><br><span class="line"><span class="number">1</span>: (%<span class="number">1</span>, %<span class="number">2</span>, %<span class="number">3</span>)</span><br><span class="line">  %<span class="number">4</span> = (Base.getfield)(%<span class="number">3</span>, <span class="number">1</span>)</span><br><span class="line">  %<span class="number">5</span> = (Main.forward)(Main.baz, %<span class="number">4</span>)</span><br><span class="line">  %<span class="number">6</span> = (Base.getindex)(%<span class="number">5</span>, <span class="number">1</span>)</span><br><span class="line">  %<span class="number">7</span> = (Base.getindex)(%<span class="number">5</span>, <span class="number">2</span>)</span><br><span class="line">  %<span class="number">8</span> = (Main.forward)(Main.bar, %<span class="number">6</span>)</span><br><span class="line">  %<span class="number">9</span> = (Base.getindex)(%<span class="number">8</span>, <span class="number">1</span>)</span><br><span class="line">  %<span class="number">10</span> = (Base.getindex)(%<span class="number">8</span>, <span class="number">2</span>)</span><br><span class="line">  %<span class="number">11</span> = (Core.tuple)(%<span class="number">10</span>, %<span class="number">7</span>)</span><br><span class="line">  %<span class="number">12</span> = (Main.Pullback&#123;<span class="built_in">Tuple</span>&#123;typeof(foo),<span class="built_in">Float64</span>&#125;,T&#125; <span class="keyword">where</span> T)(%<span class="number">11</span>)</span><br><span class="line">  %<span class="number">13</span> = (Core.tuple)(%<span class="number">9</span>, %<span class="number">12</span>)</span><br><span class="line">  <span class="keyword">return</span> %<span class="number">13</span></span><br></pre></td></tr></table></figure>
+<p>If you try to actually run this, there will be some error unfortunately</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; forward(foo, <span class="number">1.0</span>)</span><br><span class="line">ERROR: <span class="built_in">MethodError</span>: no method matching getindex(::<span class="built_in">Nothing</span>, ::<span class="built_in">Int64</span>)</span><br><span class="line">Stacktrace:</span><br><span class="line"> [<span class="number">1</span>] * at ./float.jl:<span class="number">399</span> [inlined]</span><br><span class="line"> [<span class="number">2</span>] forward(::typeof(*), ::<span class="built_in">Float64</span>, ::<span class="built_in">Float64</span>) at /Users/roger/.julia/dev/YASSAD/src/compiler.jl:<span class="number">0</span></span><br><span class="line"> [<span class="number">3</span>] baz at ./REPL[<span class="number">4</span>]:<span class="number">1</span> [inlined]</span><br><span class="line"> [<span class="number">4</span>] forward(::typeof(baz), ::<span class="built_in">Float64</span>) at /Users/roger/.julia/dev/YASSAD/src/compiler.jl:<span class="number">0</span></span><br><span class="line"> [<span class="number">5</span>] foo at ./REPL[<span class="number">2</span>]:<span class="number">1</span> [inlined]</span><br><span class="line"> [<span class="number">6</span>] forward(::typeof(foo), ::<span class="built_in">Float64</span>) at /Users/roger/.julia/dev/YASSAD/src/compiler.jl:<span class="number">0</span></span><br><span class="line"> [<span class="number">7</span>] top-level scope at none:<span class="number">0</span></span><br></pre></td></tr></table></figure>
+<p>This is because the <code>forward</code> will be recursively called, which also means we only need to define the inner most (primitive) operators by overloading the <code>forward</code> functions, e.g we can overload the <code>*</code> operator in this case</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; forward(::typeof(*), a::<span class="built_in">Real</span>, b::<span class="built_in">Real</span>) = a * b, Δ-&gt;(Δ*b, a*Δ)</span><br><span class="line"></span><br><span class="line">julia&gt; forward(foo, <span class="number">1.0</span>)</span><br><span class="line">(<span class="number">1.0</span>, YASSAD.Pullback&#123;.....&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="Backward-Transformation"><a href="#Backward-Transformation" class="headerlink" title="Backward Transformation"></a>Backward Transformation</h3><p>But this pullback is not callable yet. Let’s generate the IR for pullback. Similarly, we can define</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@generated</span> <span class="keyword">function</span> (::Pullback&#123;S&#125;)(delta) <span class="keyword">where</span> S</span><br><span class="line">    m = IRTools.meta(S)</span><br><span class="line">    m === <span class="literal">nothing</span> &amp;&amp; <span class="keyword">return</span></span><br><span class="line">    ir = IR(m)</span><br><span class="line">    _, pbs = register(ir, S)</span><br><span class="line">    back = adjoint(ir, pbs)</span><br><span class="line">    argnames!(m, <span class="built_in">Symbol</span>(<span class="string">&quot;#self#&quot;</span>), :delta)</span><br><span class="line">    <span class="keyword">return</span> IRTools.update!(m, back)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>Because the backward pass is called separately, we don’t have the forward IR anymore, unfortunately we need to call <code>register</code> again here, but no worries, this will only happen once during compile time. Before we generate the IR for adjoint program, we also need to know which variable has pullback, thus instead of using a list, we need a dict to store this, and return it to pullback. Therefore, we need to revise our <code>register</code> as following</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> register(ir, F)</span><br><span class="line">    pr = <span class="built_in">Pipe</span>(ir)</span><br><span class="line">    pbs = <span class="built_in">Dict</span>&#123;Variable, Variable&#125;()</span><br><span class="line">    argument!(pr, at = <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">for</span> (v, st) <span class="keyword">in</span> pr</span><br><span class="line">        ex = st.expr</span><br><span class="line">        <span class="keyword">if</span> Meta.isexpr(ex, :call)</span><br><span class="line">            yJ = insert!(pr, v, stmt(xcall(Main, :forward, ex.args...), line = ir[v].line))</span><br><span class="line">            pr[v] = xgetindex(yJ, <span class="number">1</span>)</span><br><span class="line">            J = insertafter!(pr, v, stmt(xgetindex(yJ, <span class="number">2</span>), line = ir[v].line))</span><br><span class="line">            pbs[v] = substitute(pr, J)</span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    pr = finish(pr)</span><br><span class="line">    v = push!(pr, xtuple(values(pbs)...))</span><br><span class="line">    pbv = push!(pr, <span class="built_in">Expr</span>(:call, Pullback&#123;F&#125;, v))</span><br><span class="line">    ret = pr.blocks[<span class="keyword">end</span>].branches[<span class="keyword">end</span>].args[<span class="number">1</span>]</span><br><span class="line">    ret = push!(pr, xtuple(ret, pbv))</span><br><span class="line">    pr.blocks[<span class="keyword">end</span>].branches[<span class="keyword">end</span>].args[<span class="number">1</span>] = ret</span><br><span class="line">    <span class="keyword">return</span> pr, pbs</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>since the adjoint program has the reversed order with the original IR, we will not use <code>Pipe</code> here, we can create an empty <code>IR</code> object,<br>and add two argument to it here, one is the <code>Pullback</code> object itself, the other is the input gradient of the backward pass (pullback).</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">adj = empty(ir)</span><br><span class="line">self = argument!(adj)</span><br><span class="line">delta = argument!(adj)</span><br></pre></td></tr></table></figure>
+<p>First, let’s get our pullbacks. The <code>getfield</code> function I call here is the lowered form of syntax sugar <code>.</code> for getting members, this is equivalent to <code>self.data</code>.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pullbacks = pushfirst!(adj, xcall(:getfield, self, <span class="built_in">QuoteNode</span>(:data)))</span><br></pre></td></tr></table></figure>
+<p>Then let’s iterate the all the variables in reversed order</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">vars = keys(ir)</span><br><span class="line"><span class="keyword">for</span> k <span class="keyword">in</span> length(vars):-<span class="number">1</span>:<span class="number">1</span></span><br><span class="line">    v = vars[k]</span><br><span class="line">    ex = ir[v].expr</span><br><span class="line">    <span class="keyword">if</span> haskey(pbs, v)</span><br><span class="line">        pbv = insertafter!(adj, pullbacks, xcall(:getindex, pullbacks, k))</span><br><span class="line">        g = push!(adj, <span class="built_in">Expr</span>(:call, pbv, v))</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>if this variable exists in our dict of pullbacks, we get it and call it with this variable. However, there is a problem of this implementation, if one variable has multiple gradient, we need to accumulate them together, thus we need to record these variables’<br>gradietns as well.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">grads = <span class="built_in">Dict</span>()</span><br></pre></td></tr></table></figure>
+<p>Then we can implement two method of <code>grad</code>:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">grad(x, x̄) = push!(get!(grads, x, []), x̄)</span><br></pre></td></tr></table></figure>
+<p>Store the gradient <code>x̄</code> in the list of <code>x</code> in <code>grads</code>.</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">grad(x) = xaccum(adj, get(grads, x, [])...)</span><br></pre></td></tr></table></figure>
+<p>Return the accumulated variable of all gradients.</p>
+<p>The <code>xaccum</code> is the same as previous <code>xgetindex</code>, but the builtin <code>accumulate</code> function in Julia is defined on arrays, we need one to accumulate variant variables, let’s do it ourselves</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">xaccum(ir) = <span class="literal">nothing</span></span><br><span class="line">xaccum(ir, x) = x</span><br><span class="line">xaccum(ir, xs...) = push!(ir, xcall(YASSAD, :accum, xs...))</span><br><span class="line">accum() = <span class="literal">nothing</span></span><br><span class="line">accum(x) = x</span><br><span class="line">accum(x, y) =</span><br><span class="line">  x == <span class="literal">nothing</span> ? y :</span><br><span class="line">  y == <span class="literal">nothing</span> ? x :</span><br><span class="line">  x + y</span><br><span class="line"></span><br><span class="line">accum(x, y, zs...) = accum(accum(x, y), zs...)</span><br><span class="line"></span><br><span class="line">accum(x::<span class="built_in">Tuple</span>, y::<span class="built_in">Tuple</span>) = accum.(x, y)</span><br><span class="line">accum(x::<span class="built_in">AbstractArray</span>, y::<span class="built_in">AbstractArray</span>) = accum.(x, y)</span><br></pre></td></tr></table></figure>
+<p>In the end, the pullback will return each input variable’s gradient of the original program. Which means it always has<br>the same number of gradients as input variables. But our <code>forward</code> function has one extra variable which is the function,<br>we will return its gradient as well, in most cases, it is <code>nothing</code>, but if it is a closure, or a callable object, it may<br>not be <code>nothing</code>.</p>
+<p>So, in the end, our <code>adjoint</code> function looks like</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> adjoint(ir, pbs)</span><br><span class="line">    adj = empty(ir)</span><br><span class="line">    self = argument!(adj)</span><br><span class="line">    delta = argument!(adj)</span><br><span class="line">    pullbacks = pushfirst!(adj, xcall(:getfield, self, <span class="built_in">QuoteNode</span>(:data)))</span><br><span class="line"></span><br><span class="line">    grads = <span class="built_in">Dict</span>()</span><br><span class="line">    grad(x, x̄) = push!(get!(grads, x, []), x̄)</span><br><span class="line">    grad(x) = xaccum(adj, get(grads, x, [])...)</span><br><span class="line">    grad(last(keys(ir)), delta)</span><br><span class="line"></span><br><span class="line">    vars = keys(ir)</span><br><span class="line">    <span class="keyword">for</span> k <span class="keyword">in</span> length(vars):-<span class="number">1</span>:<span class="number">1</span></span><br><span class="line">        v = vars[k]</span><br><span class="line">        ex = ir[v].expr</span><br><span class="line">        <span class="keyword">if</span> haskey(pbs, v)</span><br><span class="line">            pbv = insertafter!(adj, pullbacks, xcall(:getindex, pullbacks, k))</span><br><span class="line">            g = push!(adj, <span class="built_in">Expr</span>(:call, pbv, grad(v)))</span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> (i, x) <span class="keyword">in</span> enumerate(ex.args)</span><br><span class="line">                x <span class="keyword">isa</span> Variable || <span class="keyword">continue</span></span><br><span class="line">                grad(x, push!(adj, xgetindex(g, i)))</span><br><span class="line">            <span class="keyword">end</span></span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    gs = [grad(x) <span class="keyword">for</span> x <span class="keyword">in</span> arguments(ir)]</span><br><span class="line">    Δ = push!(adj, xtuple(gs...))</span><br><span class="line">    <span class="keyword">return</span>!(adj, Δ)</span><br><span class="line">    <span class="keyword">return</span> adj</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<h2 id="Contextual-Dispatch"><a href="#Contextual-Dispatch" class="headerlink" title="Contextual Dispatch"></a>Contextual Dispatch</h2><p>Reviewing what we just implemented above, we can find we were actually just dispatching functions based on their context instead of<br>their signature (since the signature is used to dispatch the function themselves). The Julia community actually implements something<br>more general: the <a target="_blank" rel="noopener" href="https://github.com/jrevels/Cassette.jl">Cassette.jl</a>. Cassette can dispatch function based on a context, and it also contains an implementation of AD as well: <a target="_blank" rel="noopener" href="https://github.com/jrevels/Cassette.jl/blob/a67c8e98ea975203e46b913807a86de5d3e84130/test/misctaggingtests.jl#L402">Cassette/test</a>. With these mechanism, and the dynamic feature of Julia, we are not only able to implement source to source AD, we can also have</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/JuliaDiffEq/SparsityDetection.jl">Sparsity Detection</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/FluxML/Hydra.jl">SPMD transformation</a></li>
+<li>Intermediate Variable Optimization</li>
+<li>Debugger: <a target="_blank" rel="noopener" href="https://github.com/oxinabox/MagneticReadHead.jl">MagneticReadHead</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/JuliaGPU/CUDAnative.jl/pull/334">Unified Interface of CUDAnative</a></li>
+</ul>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>Let’s try this with matrix multiplication + matrix trace, which is the same with what we do in our last post!</p>
+<p>Look! we can use the builtin types directly!</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">using</span> LinearAlgebra</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> forward(::typeof(*), A::<span class="built_in">Matrix</span>, B::<span class="built_in">Matrix</span>)</span><br><span class="line">    A * B, <span class="keyword">function</span> (Δ::<span class="built_in">Matrix</span>)</span><br><span class="line">        Base.<span class="meta">@_inline_meta</span></span><br><span class="line">        (<span class="literal">nothing</span>, Δ * B&#x27;, A&#x27; * Δ)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> forward(::typeof(tr), A::<span class="built_in">Matrix</span>)</span><br><span class="line">    tr(A), <span class="keyword">function</span> (Δ::<span class="built_in">Real</span>)</span><br><span class="line">        Base.<span class="meta">@_inline_meta</span></span><br><span class="line">        (<span class="literal">nothing</span>, Δ * <span class="built_in">Matrix</span>(I, size(A)))</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">julia&gt; <span class="keyword">using</span> LinearAlgebra, BenchmarkTools</span><br><span class="line"></span><br><span class="line">julia&gt; mul_tr(A::<span class="built_in">Matrix</span>, B::<span class="built_in">Matrix</span>) = tr(A * B)</span><br><span class="line">mul_tr (generic <span class="keyword">function</span> with <span class="number">1</span> method)</span><br><span class="line"></span><br><span class="line">julia&gt; A, B = rand(<span class="number">30</span>, <span class="number">30</span>), rand(<span class="number">30</span>, <span class="number">30</span>);</span><br><span class="line"></span><br><span class="line">julia&gt; mul_tr(A, B)</span><br><span class="line"><span class="number">216.7247235502547</span></span><br><span class="line"></span><br><span class="line">julia&gt; z, back = forward(mul_tr, A, B)；</span><br><span class="line"></span><br><span class="line">julia&gt; julia&gt; back(<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+<p>The performance is similar to the manual implementation as well (in fact it should be the same)</p>
+<p>The manual version is:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="meta">@benchmark</span> bench_tr_mul_base($(rand(<span class="number">30</span>, <span class="number">30</span>)), $(rand(<span class="number">30</span>, <span class="number">30</span>)))</span><br><span class="line">BenchmarkTools.Trial: </span><br><span class="line">  memory estimate:  <span class="number">28.78</span> KiB</span><br><span class="line">  allocs estimate:  <span class="number">5</span></span><br><span class="line">  --------------</span><br><span class="line">  minimum time:     <span class="number">10.696</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  median time:      <span class="number">13.204</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  mean time:        <span class="number">24.075</span> μs (<span class="number">43.31</span>% GC)</span><br><span class="line">  maximum time:     <span class="number">62.964</span> ms (<span class="number">99.97</span>% GC)</span><br><span class="line">  --------------</span><br><span class="line">  samples:          <span class="number">10000</span></span><br><span class="line">  evals/sample:     <span class="number">1</span></span><br></pre></td></tr></table></figure>
+<p>the generated version:</p>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">julia&gt; <span class="meta">@benchmark</span> tr_mul($A, $B)</span><br><span class="line">BenchmarkTools.Trial: </span><br><span class="line">  memory estimate:  <span class="number">36.17</span> KiB</span><br><span class="line">  allocs estimate:  <span class="number">14</span></span><br><span class="line">  --------------</span><br><span class="line">  minimum time:     <span class="number">12.921</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  median time:      <span class="number">15.659</span> μs (<span class="number">0.00</span>% GC)</span><br><span class="line">  mean time:        <span class="number">27.304</span> μs (<span class="number">40.97</span>% GC)</span><br><span class="line">  maximum time:     <span class="number">60.141</span> ms (<span class="number">99.94</span>% GC)</span><br><span class="line">  --------------</span><br><span class="line">  samples:          <span class="number">10000</span></span><br><span class="line">  evals/sample:     <span class="number">1</span></span><br></pre></td></tr></table></figure>
+<p>Now we have implemented a very simple source to source automatic differentiation, but we didn’t handle control flow here. A more<br>complete implementation can be find in <code>Zygote.jl/compiler</code>, it can differentiate through almost everything, including: self defined types, control flows, foreign function calls (e.g you can differentiate <code>PyTorch</code> functions!), and <code>in-place</code> function (mutation support). This also includes part of our quantum algorithm design framework <a target="_blank" rel="noopener" href="https://github.com/QuantumBFS/Yao.jl">Yao.jl</a> with some custom primitives.</p>
+<p>Our implementation here only costs 132 lines of code in Julia. Even the complete implementation’s compiler only costs 495 lines of code. It is possible to finish in one or a few days!</p>
+
+    </div>
+
+    
+    
+    
+        
+
+  <div class="followme">
+    <p>Welcome to my other publishing channels</p>
+
+    <div class="social-list">
+
+        <div class="social-item">
+          <a target="_blank" class="social-link" href="https://twitter.com/rogerluorl18">
+            <span class="icon">
+              <i class="fab fa-twitter"></i>
+            </span>
+
+            <span class="label">Twitter</span>
+          </a>
+        </div>
+    </div>
+  </div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/automatic-differentiation/" rel="tag"># automatic differentiation</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/10/23/write-an-ad-in-one-day/" rel="prev" title="Implement Your Own Automatic Differentiation with Julia in ONE day">
+      <i class="fa fa-chevron-left"></i> Implement Your Own Automatic Differentiation with Julia in ONE day
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/03/31/yany/" rel="next" title="Build your own Top Performance Quantum Circuit Simulator in ONE DAY!">
+      Build your own Top Performance Quantum Circuit Simulator in ONE DAY! <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="disqus_thread">
+      <noscript>Please enable JavaScript to view the comments powered by Disqus.</noscript>
+    </div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Basics"><span class="nav-number">1.</span> <span class="nav-text">Basics</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#The-compilation-process-of-Julia-language"><span class="nav-number">1.1.</span> <span class="nav-text">The compilation process of Julia language</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SSA-Form-IR"><span class="nav-number">1.2.</span> <span class="nav-text">SSA Form IR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Implementation"><span class="nav-number">2.</span> <span class="nav-text">Implementation</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Forward-Transformation"><span class="nav-number">2.1.</span> <span class="nav-text">Forward Transformation</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Backward-Transformation"><span class="nav-number">2.2.</span> <span class="nav-text">Backward Transformation</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Contextual-Dispatch"><span class="nav-number">3.</span> <span class="nav-text">Contextual Dispatch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Conclusion"><span class="nav-number">4.</span> <span class="nav-text">Conclusion</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Xiu-Zhe (Roger) Luo</p>
+  <div class="site-description" itemprop="description">Where I writes about Machine Learning, Quanutm Physics, and more.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/Roger-luo" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;Roger-luo" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/rogerluorl18" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;rogerluorl18" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xiu-Zhe (Roger) Luo</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+      
+
+<script>
+  if (typeof MathJax === 'undefined') {
+    window.MathJax = {
+      loader: {
+        source: {
+          '[tex]/amsCd': '[tex]/amscd',
+          '[tex]/AMScd': '[tex]/amscd'
+        }
+      },
+      tex: {
+        inlineMath: {'[+]': [['$', '$']]},
+        tags: 'ams'
+      },
+      options: {
+        renderActions: {
+          findScript: [10, doc => {
+            document.querySelectorAll('script[type^="math/tex"]').forEach(node => {
+              const display = !!node.type.match(/; *mode=display/);
+              const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display);
+              const text = document.createTextNode('');
+              node.parentNode.replaceChild(text, node);
+              math.start = {node: text, delim: '', n: 0};
+              math.end = {node: text, delim: '', n: 0};
+              doc.math.push(math);
+            });
+          }, '', false],
+          insertedScript: [200, () => {
+            document.querySelectorAll('mjx-container').forEach(node => {
+              let target = node.parentNode;
+              if (target.nodeName.toLowerCase() === 'li') {
+                target.parentNode.classList.add('has-jax');
+              }
+            });
+          }, '', false]
+        }
+      }
+    };
+    (function () {
+      var script = document.createElement('script');
+      script.src = '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+      script.defer = true;
+      document.head.appendChild(script);
+    })();
+  } else {
+    MathJax.startup.document.state(0);
+    MathJax.texReset();
+    MathJax.typeset();
+  }
+</script>
+
+    
+
+  
+
+<script>
+  function loadCount() {
+    var d = document, s = d.createElement('script');
+    s.src = 'https://blog-rogerluo-me.disqus.com/count.js';
+    s.id = 'dsq-count-scr';
+    (d.head || d.body).appendChild(s);
+  }
+  // defer loading until the whole page loading is completed
+  window.addEventListener('load', loadCount, false);
+</script>
+<script>
+  var disqus_config = function() {
+    this.page.url = "http://rogerluo.me/blog/2019/07/27/yassad/";
+    this.page.identifier = "2019/07/27/yassad/";
+    this.page.title = "Implement Your Own Source To Source AD in ONE day!";
+    };
+  NexT.utils.loadComments(document.querySelector('#disqus_thread'), () => {
+    if (window.DISQUS) {
+      DISQUS.reset({
+        reload: true,
+        config: disqus_config
+      });
+    } else {
+      var d = document, s = d.createElement('script');
+      s.src = 'https://blog-rogerluo-me.disqus.com/embed.js';
+      s.setAttribute('data-timestamp', '' + +new Date());
+      (d.head || d.body).appendChild(s);
+    }
+  });
+</script>
+
+</body>
+</html>
