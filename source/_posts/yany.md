@@ -1340,18 +1340,11 @@ is easily achievable in pure Julia with much less code. Although, we should wrap
 code into functions and call them as a better practice, we still only use less than 600 lines of code
 with copy pasting everywhere. 
 
-Moreover, the power of generic programming
-will unleash our thinking of numerical methods on many different numerical types.
+Moreover, the power of generic programming will unleash our thinking of numerical methods on many different numerical types.
 
-Experienced readers may find there may still rooms for further optimization, e.g we didn't specialize
-much common gates yet, and the loop unroll size might not be the perfect size, and may still vary due
-to the machine.
+Experienced readers may find there may still rooms for further optimization, e.g we didn't specialize much common gates yet, and the loop unroll size might not be the perfect size, and may still vary due to the machine.
 
-Last, besides simulating quantum circuits, the above implementation of subspace matrix multiplication
-is actually a quite common routine happens frequently in [tensor contraction](https://en.wikipedia.org/wiki/Tensor_contraction)
-(because quantum circuits are one kind of tensor network), thus more promising application can be using these routines for tensor
-contraction, however, to make these type of operations more efficient, it may require us to implement BLAS level 3 operation in the subspace
-which is the subspace matrix-matrix multiplication, which can require more tricks and more interesting.
+Last, besides simulating quantum circuits, the above implementation of subspace matrix multiplication is actually a quite common routine happens frequently in [tensor contraction](https://en.wikipedia.org/wiki/Tensor_contraction) (because quantum circuits are one kind of tensor network), thus more promising application can be using these routines for tensor contraction, however, to make these type of operations more efficient, it may require us to implement BLAS level 3 operation in the subspace which is the subspace matrix-matrix multiplication, which can require more tricks and more interesting.
 
 ---
 
