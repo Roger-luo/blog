@@ -16,7 +16,7 @@ language yet, I would suggest you to checkout materials [here](https://julialang
 
 ## Background
 [Quantum computing](https://en.wikipedia.org/wiki/Quantum_computing) has been a popular research topic in recent years. And building simulators can be useful for related research. I'm not going to give you a full introduction of what is quantum computing in this blog post, but I find you [this nice tutorial from Microsoft](https://youtu.be/F_Riqjdh2oM) if you are
-really interested in knowing what is the quantum computing. And you don't really need to understand everything about quantum computing to follow this blog post - the emulator itself is just about special matrix-vector or matrix-matrix multiplication.
+interested in knowing what is the quantum computing. And you don't really need to understand everything about quantum computing to follow this blog post - the emulator itself is just about special matrix-vector or matrix-matrix multiplication.
 
 So to be simple, simulating quantum circuits, or to be more specific simulating how quantum circuits act on a quantum register, is about how to calculate large matrix-vector multiplication that scales exponentially. The vector contains the so-called quantum state and the matrices are quantum gate, which are usually small. The diagram of quantum circuits is a representation of these matrix multiplications. 
 
@@ -226,7 +226,8 @@ we define this as a function called `lmove`:
 @inline lmove(b::Int, mask::Int, k::Int)::Int = (b & ~mask) << k + (b & mask)
 ```
 
-we mark this function `@inline` here to make sure the compiler will always inline it,
+we mark this function [`@inline`](https://docs.julialang.org/en/v1/base/base/#Base.@inline)
+here to make sure the compiler will always inline it,
 now we need to generate all the masks by counting contiguous region of the given locations
 
 ```julia
@@ -405,8 +406,8 @@ function broutine!(st::AbstractVector, U::AbstractMatrix, locs::NTuple{N, Int}) 
 end
 ```
 
-the `log2dim1` is just a convenient one-liner `log2dim1(x) = log2i(size(x, 1))`. And we use `@inbounds` here to tell the Julia compiler
-that we are pretty sure all our indices are inbounds! And use `@views` to tell Julia we are confident at mutating our arrays so please
+the `log2dim1` is just a convenient one-liner `log2dim1(x) = log2i(size(x, 1))`. And we use [`@inbounds`](https://docs.julialang.org/en/v1/base/base/#Base.@inbounds) here to tell the Julia compiler
+that we are pretty sure all our indices are inbounds! And use [`@views`](https://docs.julialang.org/en/v1/base/arrays/#Base.@views) to tell Julia we are confident at mutating our arrays so please
 use a `view` and don't allocate any memory!
 
 Now you may notice: the iteration in our implementation is independent and may be reordered! This means we can easily make this parallel. The simplest way to parallelize it is via multi-threading. In Julia, this is extremely simple,
@@ -646,8 +647,9 @@ BenchmarkTools.Trial:
 ---
 
 Using `StaticArray` is already very fast, But this is still space to optimize it, and because `StaticArray` will
-store everything as a type in compile time, this will force us to compile things at runtime. Before we move forward,
-let me formalize the problem a bit more:
+store everything as a type in compile time, this will force us to compile things at runtime, which can make the first
+time execution slow (since Julia uses [just-in-time](https://en.wikipedia.org/wiki/Just-in-time_compilation) compilation,
+it can specialize functions at runtime). Before we move forward, let me formalize the problem a bit more:
 
 Now as you might have noticed, what we have been doing is implementing a matrix-vector multiplication but in subspace,
 and we always know the indices inside the complement space, we just need to calculate its value in the full space, and
@@ -762,8 +764,9 @@ T2 = U[2, 1] * st[idx[1]] + U[2, 2] * st[idx[2]]
 
 first you will find we don't need our intermediate array `y` anymore! And moreover, notice that the order of `T1` and `T2` doesn't matter
 for this calculation, which means in principal they can be executed in parallel! But this is an inner loop, we don't want to waste our 
-multi-thread resources to parallel it, instead we hope we can have [SIMD](https://en.wikipedia.org/wiki/SIMD). And in fact the compiler
-can figure out how to use SIMD for the 2x2 case itself, since it's very obvious, and also because we have implicitly implied that we only
+multi-thread resources to parallel it, instead we hope we can have [SIMD](https://en.wikipedia.org/wiki/SIMD). However, we don't have to
+call SIMD instructions explicitly, because in fact the compiler
+can figure out how to use SIMD instructions for the 2x2 case itself, since it's very obvious, and also because we have implicitly implied that we only
 have a matrix of shape 2x2 by expanding the loop. So let's just trust our compiler
 
 ```julia
@@ -1133,106 +1136,6 @@ function broutine!(st::AbstractVector, U::AbstractMatrix, locs::NTuple{N, Int}, 
 end
 ```
 
----
-
-## Implementing X Gate
-We have implemented the most general case, but for some special gates, there are still space of improvement when we know the actual gate.
-So what does a quantum X gate do in our emulator exactly? Let's look at the definition of the Pauli X matrix
-
-$$
-X = \begin{pmatrix}
-0 & 1\\\\
-1 & 0
-\end{pmatrix}
-$$
-
-when we apply such matrix to a vector, it actually just permutes the corresponding element. Thus we can implement this as a permutation operation directly: X gate applied to `k`-th qubit will permute all possible binary configuration `...0...` with `...1...`, where `0` and `1` is the value of `k`-th bit. If we look at our previous implementation on `routine2x2!` this becomes very obvious, we can further squeeze the performance by removing the multiplications
-
-```julia
-function broutine!(st::AbstractVector{T}, ::Val{:X}, locs::Tuple{Int}) where T
-    step_1 = 1 << (first(locs) - 1)
-    step_2 = 1 << first(locs)
-
-    @inbounds if step_1 == 1
-        for j in 0:step_2:size(st, 1)-step_1
-            tmp = st[j + 1]
-            st[j + 1] = st[j + 1 + step_1]
-            st[j + 1 + step_1] = tmp
-        end
-    elseif step_1 == 2
-        for j in 0:step_2:size(st, 1)-step_1
-            Base.Cartesian.@nexprs 2 i->begin
-                tmp = st[j + i]
-                st[j + i] = st[j + i + step_1]
-                st[j + i + step_1] = tmp
-            end
-        end
-    elseif step_1 == 4
-        for j in 0:step_2:size(st, 1)-step_1
-            Base.Cartesian.@nexprs 4 i->begin
-                tmp = st[j + i]
-                st[j + i] = st[j + i + step_1]
-                st[j + i + step_1] = tmp
-            end
-        end
-    elseif step_1 == 8
-        for j in 0:step_2:size(st, 1)-step_1
-            Base.Cartesian.@nexprs 8 i->begin
-                tmp = st[j + i]
-                st[j + i] = st[j + i + step_1]
-                st[j + i + step_1] = tmp
-            end
-        end
-    else
-        for j in 0:step_2:size(st, 1)-step_1
-            for i in j:8:j+step_1-1
-                Base.Cartesian.@nexprs 8 k->begin
-                    tmp = st[i+k]
-                    st[i+k] = st[i + step_1 + k]
-                    st[i + step_1 + k] = tmp
-                end
-            end
-        end
-    end
-    return st
-end
-```
-
-However, this does not gain much performance anymore
-
-```julia
-julia> U = [0 1;1 0]
-2×2 Array{Int64,2}:
- 0  1
- 1  0
-
-julia> @benchmark broutine!(r, $U, $locs) setup=(r=copy($st))
-BenchmarkTools.Trial: 
-  memory estimate:  0 bytes
-  allocs estimate:  0
-  --------------
-  minimum time:     5.708 μs (0.00% GC)
-  median time:      5.962 μs (0.00% GC)
-  mean time:        6.007 μs (0.00% GC)
-  maximum time:     11.841 μs (0.00% GC)
-  --------------
-  samples:          10000
-  evals/sample:     6
-
-julia> @benchmark broutine!(r, Val(:X), $locs) setup=(r=copy($st))
-BenchmarkTools.Trial: 
-  memory estimate:  0 bytes
-  allocs estimate:  0
-  --------------
-  minimum time:     4.001 μs (0.00% GC)
-  median time:      4.614 μs (0.00% GC)
-  mean time:        4.583 μs (0.00% GC)
-  maximum time:     7.975 μs (0.00% GC)
-  --------------
-  samples:          10000
-  evals/sample:     8
-```
-
 ## Parallelize using Multi-threads
 
 Now since we have implemented general matrix instructions, we should be able to simulate arbitrary quantum circuit. We can now parallel what we have implemented using multi-thread directly as we mentioned at the beginning. However, multi-threading is not always beneficial, it has a small overhead. Thus we may not want it when the number of qubits is not large enough.
@@ -1322,10 +1225,12 @@ end
 
 ## Benchmark
 
-Now let's see how fast is our ~600 line of code quantum circuit emulator. I don't mean to go through a complete benchmark
+Now let's see how fast is our ~600 line of code quantum circuit emulator. I don't intend to go through a complete benchmark here
 since the above implementation is generic it will has similar benchmark on different kinds of gates. And there are still plenty
-of room to optimize. The benchmark of multi-threaded routines and CUDA is currently missing since I don't have access to a
-GPU with `ComplexF64` support to make the comparision fair. However, this blog post is a simple implementation of
+of room to optimize, e.g we can specialize each routine for a known gate, such `X` gate, `H` gate to make use of their matrix structure.
+
+The benchmark of multi-threaded routines and CUDA is currently missing since I don't have access to a
+GPU with `ComplexF64` support to make the comparison fair. However, this blog post is a simple version of
 [YaoArrayRegister](https://github.com/QuantumBFS/YaoArrayRegister.jl)
 in the [Yao](https://yaoquantum.org/) ecosystem, you can use the benchmark of Yao for reference. Or please also feel free to
 benchmark the implementation and play with it in this blog post yourself for sure!
@@ -1424,23 +1329,29 @@ julia> broutine!(st, [exp(-im * θ) 0; 0 exp(im * θ)], (1, ))
            0
 ```
 
-This the magic of generic programming.
+This is only possible when one is able to use [generic programming](https://en.wikipedia.org/wiki/Generic_programming) to write
+high performance program, which is usually not possible in the two-language solution Python/C++ without implementing one's own
+type system and domain specific language (DSL) compiler, which eventually becomes some efforts that reinventing the wheels.
 
 ## Conclusion
 
 Getting similar performance or beyond comparing to Python/C++ solution in numerical computation
-is easily achievable in pure Julia with much less code. Moreover, the power of generic programming
-will unleash our thinking of numerical methods.
+is easily achievable in pure Julia with much less code. Although, we should wrap some of the overlapping
+code into functions and call them as a better practice, we still only use less than 600 lines of code
+with copy pasting everywhere. 
+
+Moreover, the power of generic programming
+will unleash our thinking of numerical methods on many different numerical types.
 
 Experienced readers may find there may still rooms for further optimization, e.g we didn't specialize
 much common gates yet, and the loop unroll size might not be the perfect size, and may still vary due
 to the machine.
 
 Last, besides simulating quantum circuits, the above implementation of subspace matrix multiplication
-is actually a quite common routine happens frequently in tensor contraction (well quantum circuits are
-one kind of tensor network), thus more promising application can be using these routines for tensor
-contraction, however, that may require us to implement BLAS level 3 operation which is the subspace
-matrix-matrix multiplication, which can require more tricks.
+is actually a quite common routine happens frequently in [tensor contraction](https://en.wikipedia.org/wiki/Tensor_contraction)
+(because quantum circuits are one kind of tensor network), thus more promising application can be using these routines for tensor
+contraction, however, to make these type of operations more efficient, it may require us to implement BLAS level 3 operation in the subspace
+which is the subspace matrix-matrix multiplication, which can require more tricks and more interesting.
 
 ---
 
