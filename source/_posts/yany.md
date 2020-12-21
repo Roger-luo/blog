@@ -1,11 +1,11 @@
 ---
-title: Build your own Quantum Circuit Simulator in ONE DAY!
+title: Build your own Top Performance Quantum Circuit Simulator in ONE DAY!
 date: 2020-03-31 01:22:18
 tags: quantum-computing
 mathjax: true
 ---
 
-How hard is it to build your own quantum circuit simulator? Does it really needs thousands of lines of code to implement it?
+How hard is it to build your own top performance quantum circuit simulator? Does it really needs thousands of lines of code to implement it?
 At least in Julia language, you don't! We can easily achieve top performance via a few hundreds of code while supporting
 CUDA and symbolic calculation.
 

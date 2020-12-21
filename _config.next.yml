@@ -1,3 +1,13 @@
+menu:
+  home: / || fa fa-home
+  about: /about/ || fa fa-user
+  tags: /tags/ || fa fa-tags
+  #categories: /categories/ || fa fa-th
+  archives: /archives/ || fa fa-archive
+  #schedule: /schedule/ || fa fa-calendar
+  #sitemap: /sitemap.xml || fa fa-sitemap
+  #commonweal: /404/ || fa fa-heartbeat
+
 disqus:
   enable: true
   shortname: blog-rogerluo-me
@@ -6,3 +16,30 @@ disqus:
 math:
   mathjax:
     enable: true
+
+# darkmode: true
+
+sidebar:
+  # Sidebar Position.
+  position: right
+
+social:
+  GitHub: https://github.com/Roger-luo || fab fa-github
+  Twitter: https://twitter.com/rogerluorl18 || fab fa-twitter
+
+follow_me:
+  Twitter: https://twitter.com/rogerluorl18 || fab fa-twitter
+
+codeblock:
+  # Code Highlight theme
+  # Available values: normal | night | night eighties | night blue | night bright | solarized | solarized dark | galactic
+  # See: https://github.com/chriskempson/tomorrow-theme
+  highlight_theme: night
+  copy_button:
+    enable: true
+    show_result: true
+
+reading_progress:
+  enable: true
+  # color: "#37c6c0"
+  # height: 2px
