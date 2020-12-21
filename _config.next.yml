@@ -1,0 +1,8 @@
+disqus:
+  enable: true
+  shortname: blog-rogerluo-me
+  count: true
+
+math:
+  mathjax:
+    enable: true
