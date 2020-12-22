@@ -1292,7 +1292,8 @@ end
 
 *note: we always use minimum time as a stable estimator for benchmarks*
 
-now we plot the benchmark of `X`, `H`, `T`, `CNOT`.
+now we plot the benchmark of `X`, `H`, `T`, `CNOT` in relative time, to see how good our own simulator is comparing to
+one of the best Python/C++ based circuit simulator in single thread.
 
 ![benchmark](/images/implement-your-own-qc-simulator/benchmark.png)
 
