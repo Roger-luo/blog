@@ -18,9 +18,9 @@ language yet, I would suggest you to checkout materials [here](https://julialang
 [Quantum computing](https://en.wikipedia.org/wiki/Quantum_computing) has been a popular research topic in recent years. And building simulators can be useful for related research. I'm not going to give you a full introduction of what is quantum computing in this blog post, but I find you [this nice tutorial from Microsoft](https://youtu.be/F_Riqjdh2oM) if you are
 interested in knowing what is the quantum computing. And you don't really need to understand everything about quantum computing to follow this blog post - the emulator itself is just about special matrix-vector or matrix-matrix multiplication.
 
-So to be simple, simulating quantum circuits, or to be more specific simulating how quantum circuits act on a quantum register, is about how to calculate large matrix-vector multiplication that scales exponentially. The vector contains the so-called quantum state and the matrices are quantum gate, which are usually small. The diagram of quantum circuits is a representation of these matrix multiplications. 
+So to be simple, simulating quantum circuits, or to be more specific simulating how quantum circuits act on a quantum register, is about how to calculate large matrix-vector multiplication that scales exponentially. The most brute-force and accurate way of doing it via full amplitude simulation, which means we do this matrix-vector multiplication directly.
 
-For example, the X gate is just a small matrix
+The vector contains the so-called quantum state and the matrices are quantum gate, which are usually small. The diagram of quantum circuits is a representation of these matrix multiplications.  For example, the X gate is just a small matrix
 
 $$
 \begin{pmatrix}
